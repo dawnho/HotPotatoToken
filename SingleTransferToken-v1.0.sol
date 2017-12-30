@@ -103,7 +103,7 @@ contract SingleTransferToken is ERC721 {
     }
 
     /// For querying balance of a particular account
-    ///  @dev Required for ERC-721 compliance.
+    /// @dev Required for ERC-721 compliance.
     function balanceOf(address _owner) public view returns (uint256 balance) {
         return _owner == tokenOwner ? 1 : 0;
     }
@@ -162,7 +162,7 @@ contract SingleTransferToken is ERC721 {
         // Pay previous tokenOwner
         payment = currentPrice * 94/100;
         oldOwner.transfer(payment); //(1-0.06)
-        
+
         // Pay commission to contractOwner
         contractOwner.transfer(currentPrice - payment);
 
@@ -245,13 +245,13 @@ contract SingleTransferToken is ERC721 {
         transferToken(_from, _to);
     }
 
-    // Private functions
-    // For checking approval of transfer
+    /* PRIVATE FUNCTIONS */
+    /// For checking approval of transfer
     function isApproved(address _to) private view returns (bool approval) {
         return approved == _to;
     }
 
-    // Safety check on _to address to prevent against an unexpected 0x0 default.
+    /// Safety check on _to address to prevent against an unexpected 0x0 default.
     function notNullToAddress(address _to) private view returns (bool notNull) {
         return _to != address(0);
     }
@@ -262,10 +262,10 @@ contract SingleTransferToken is ERC721 {
         _;
     }
 
-    // For transfering token from one owner to the next, and clearing approved
+    /// For transfering token from one owner to the next, and clearing approved
     function transferToken(address _from, address _to) private {
         tokenOwner = _to;
-        // reset approved transfers
+        // reset approved log
         approved = address(0);
         Transfer(_from, _to, TOKEN_ID);
     }
