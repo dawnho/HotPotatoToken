@@ -34,9 +34,9 @@ contract SingleTransferToken is ERC721 {
     uint256 private constant TOTAL_SUPPLY = 1;
     uint256 private constant TOKEN_ID = 2046;
 
-    uint256 currentPrice;
+    uint256 private currentPrice;
 
-    uint256 sellingPrice;
+    uint256 private sellingPrice;
 
     uint256 private stepLimit = 2 ether;
 
@@ -49,7 +49,7 @@ contract SingleTransferToken is ERC721 {
     address public tokenOwner;
 
     // Allowed to transfer to this address
-    address allowedTo = address(0);
+    address private approved = address(0);
 
     /// Access modifier for contract owner only functionality
     modifier onlyContractOwner() {
@@ -60,12 +60,6 @@ contract SingleTransferToken is ERC721 {
     /// Access modifier for token owner only functionality
     modifier onlyTokenOwner() {
         require(msg.sender == tokenOwner);
-        _;
-    }
-
-    /// Verifying that tokenId is valid
-    modifier tokenIdMatches(uint256 _tokenId) {
-        require(_tokenId == TOKEN_ID);
         _;
     }
 
@@ -88,22 +82,28 @@ contract SingleTransferToken is ERC721 {
 
     }
 
-    // Allow _spender to withdraw from your account, multiple times, up to the _value amount.
-    // If this function is called again it overwrites the current allowance with _value.
+    /// @notice Grant another address the right to transfer token via takeOwnership() and transferFrom().
+    /// @param _to The address to be granted transfer approval. Pass address(0) to
+    ///  clear all approvals.
+    /// @param _tokenId The ID of the Token that can be transferred if this call succeeds.
+    /// @dev Required for ERC-721 compliance.
     function approve(
         address _to,
         uint256 _tokenId
-    ) public onlyTokenOwner tokenIdMatches(_tokenId) {
+    ) public onlyTokenOwner {
         // Owner cannot grant approval to self.
         require(msg.sender != _to);
 
-        allowedTo = _to;
+        // Check whether token ID is on record.
+        require(tokenIdMatches(_tokenId));
+
+        approved = _to;
 
         Approval(msg.sender, _to, _tokenId);
     }
 
-    //  Required for ERC-721 compliance.
-    //  For querying balance of a particular account
+    /// For querying balance of a particular account
+    ///  @dev Required for ERC-721 compliance.
     function balanceOf(address _owner) public view returns (uint256 balance) {
         return _owner == tokenOwner ? 1 : 0;
     }
@@ -116,87 +116,35 @@ contract SingleTransferToken is ERC721 {
         name = _name;
     }
 
-    /// Required for ERC-721 compliance.
-    // For querying owner of token
+    /// For querying owner of token
+    /// @dev Required for ERC-721 compliance.
     function ownerOf(uint256 _tokenId)
         public
         view
-        tokenIdMatches(_tokenId)
         returns (address owner)
     {
+        require(tokenIdMatches(_tokenId));
         owner = tokenOwner;
     }
 
-    function symbol() public view returns (string symbol) {
-        symbol = _symbol;
-    }
-
-    function takeOwnership(uint256 _tokenId) public tokenIdMatches(_tokenId) {
-        address newOwner = msg.sender;
-
-        // Safety check to prevent against an unexpected 0x0 default.
-        require(newOwner != address(0));
-
-        require(approvalOf(newOwner));
-        require(newOwner != tokenOwner);
-        Transfer(tokenOwner, newOwner, _tokenId);
-    }
-
-    /// Required for ERC-721 compliance.
-    /// For querying totalSupply of token
-    function totalSupply() public view returns (uint256 total) {
-        return TOTAL_SUPPLY;
-    }
-
-    /// Required for ERC-721 compliance.
-    // Transfer the balance from owner's account to another account
-    function transfer(
-        address _to,
-        uint256 _tokenId
-    ) public  onlyTokenOwner tokenIdMatches(_tokenId) {
-        // Safety check to prevent against an unexpected 0x0 default.
-        require(newOwner != address(0));
-
-        tokenOwner = _to;
-        Transfer(msg.sender, _to, _tokenId);
-    }
-
-    // Send _tokenId token from address _from to address _to
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) public tokenIdMatches(_tokenId) {
-        oldOwner = _from;
-        newOwner = _to;
-
-        // Safety check to prevent against an unexpected 0x0 default.
-        require(newOwner != address(0));
-
-        require(approvalOf(newOwner));
-        require(tokenOwner == oldOwner);
-
-        tokenOwner = _to;
-        Transfer(_from, _to, _tokenId);
-    }
-
     // Allows someone to send ether and obtain the token
-    function() public payable {
+    function purchaseToken() public payable {
+        oldOwner = tokenOwner;
+        newOwner = msg.sender;
 
-        //making sure token owner is not sending
-        assert(tokenOwner != msg.sender);
+        // Making sure token owner is not sending to self
+        require(oldOwner != newOwner);
 
-        //making sure sent amount is greater than or equal to the sellingPrice
-        assert(msg.value >= sellingPrice);
+        // Safety check to prevent against an unexpected 0x0 default.
+        require(notNullToAddress(newOwner));
 
-        //if sent amount is greater than sellingPrice refund extra
-        if(msg.value > sellingPrice){
+        // Making sure sent amount is greater than or equal to the sellingPrice
+        require(msg.value >= sellingPrice);
 
-            msg.sender.transfer(msg.value - sellingPrice);
+        // If sent amount is greater than sellingPrice, save diff and refund below.
+        excessValue = msg.value - currentPrice;
 
-        }
-
-        //update prices
+        // Update prices
         currentPrice = sellingPrice;
 
         if (currentPrice >= stepLimit) {
@@ -209,7 +157,18 @@ contract SingleTransferToken is ERC721 {
 
         }
 
-        transferToken(tokenOwner, msg.sender);
+        transferToken(oldOwner, newOwner);
+
+        // Pay previous tokenOwner
+        payment = currentPrice * 94/100;
+        oldOwner.transfer(payment); //(1-0.06)
+        
+        // Pay commission to contractOwner
+        contractOwner.transfer(currentPrice - payment);
+
+        if (excessValue) {
+            msg.sender.transfer(excessValue);
+        }
 
         //if contact balance is greater than 1000000000000000 wei,
         //transfer balance to the contract owner
@@ -220,7 +179,7 @@ contract SingleTransferToken is ERC721 {
         //}
 
     }
-
+/*
     function payout(address _to) public onlyContractOwner {
         if (this.balance > 1 ether) {
             if (_to == address(0)) {
@@ -229,22 +188,85 @@ contract SingleTransferToken is ERC721 {
                 _to.transfer(this.balance - 1 ether);
             }
         }
+    } */
+
+    function symbol() public view returns (string symbol) {
+        symbol = _symbol;
+    }
+
+    function takeOwnership(uint256 _tokenId) public {
+        address newOwner = msg.sender;
+
+        // Safety check to prevent against an unexpected 0x0 default.
+        require(notNullToAddress(newOwner));
+
+        // Safety check to ensure token ID is correct
+        require(tokenIdMatches(_tokenId));
+
+        // Making sure transfer is approved
+        require(isApproved(newOwner));
+
+        // Making sure token owner is not sending to self
+        require(newOwner != tokenOwner);
+
+        transferToken(tokenOwner, newOwner);
+    }
+
+    /// For querying totalSupply of token
+    /// @dev Required for ERC-721 compliance.
+    function totalSupply() public view returns (uint256 total) {
+        return TOTAL_SUPPLY;
+    }
+
+    /// Transfer the token from owner's account to another account
+    /// @dev Required for ERC-721 compliance.
+    function transfer(
+        address _to,
+        uint256 _tokenId
+    ) public  onlyTokenOwner {
+        require(tokenIdMatches(_tokenId));
+        require(notNullToAddress(_to));
+
+        transferToken(msg.sender, _to);
+    }
+
+    /// Send _tokenId token from address _from to address _to
+    /// @dev Required for ERC-721 compliance.
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _tokenId
+    ) public {
+        require(isApproved(_to));
+        require(tokenOwner == _from);
+        require(tokenIdMatches(_tokenId));
+        require(notNullToAddress(_to));
+
+        transferToken(_from, _to);
     }
 
     // Private functions
-    function approvalOf(address _to) private view returns (bool approved) {
-        return allowedTo == _to;
+    // For checking approval of transfer
+    function isApproved(address _to) private view returns (bool approval) {
+        return approved == _to;
     }
 
-    function transferToken(address prevOwner, address newOwner) private {
+    // Safety check on _to address to prevent against an unexpected 0x0 default.
+    function notNullToAddress(address _to) private view returns (bool notNull) {
+        return _to != address(0);
+    }
 
-        //pay previous owner
-        prevOwner.transfer((currentPrice*94)/100); //(1-0.06)
+    /// Verifying that tokenId is valid
+    function tokenIdMatches(uint256 _tokenId) private view returns (bool matches) {
+        require(_tokenId == TOKEN_ID);
+        _;
+    }
 
-        tokenOwner = newOwner;
-
-        Transfer(prevOwner, newOwner, 1);
-
-
+    // For transfering token from one owner to the next, and clearing approved
+    function transferToken(address _from, address _to) private {
+        tokenOwner = _to;
+        // reset approved transfers
+        approved = address(0);
+        Transfer(_from, _to, TOKEN_ID);
     }
 }
