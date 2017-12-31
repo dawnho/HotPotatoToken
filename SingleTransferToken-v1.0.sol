@@ -103,6 +103,7 @@ contract SingleTransferToken is ERC721 {
     }
 
     /// For querying balance of a particular account
+    /// @param _owner The address for balance query
     /// @dev Required for ERC-721 compliance.
     function balanceOf(address _owner) public view returns (uint256 balance) {
         return _owner == tokenOwner ? 1 : 0;
@@ -117,6 +118,7 @@ contract SingleTransferToken is ERC721 {
     }
 
     /// For querying owner of token
+    /// @param _tokenId The tokenID for owner inquiry
     /// @dev Required for ERC-721 compliance.
     function ownerOf(uint256 _tokenId)
         public
@@ -190,10 +192,14 @@ contract SingleTransferToken is ERC721 {
         }
     } */
 
+    /// For querying the symbol of the contract
     function symbol() public view returns (string symbol) {
         symbol = _symbol;
     }
 
+    /// @notice Allow pre-approved user to take ownership of a token
+    /// @param _tokenId The ID of the Token that can be transferred if this call succeeds.
+    /// @dev Required for ERC-721 compliance.
     function takeOwnership(uint256 _tokenId) public {
         address newOwner = msg.sender;
 
@@ -213,12 +219,15 @@ contract SingleTransferToken is ERC721 {
     }
 
     /// For querying totalSupply of token
+    /// @param _tokenId The ID of the Token that for the inquiry.
     /// @dev Required for ERC-721 compliance.
     function totalSupply() public view returns (uint256 total) {
         return TOTAL_SUPPLY;
     }
 
-    /// Transfer the token from owner's account to another account
+    /// Owner initates the transfer of the token to another account
+    /// @param _to The address for the token to be transferred to.
+    /// @param _tokenId The ID of the Token that can be transferred if this call succeeds.
     /// @dev Required for ERC-721 compliance.
     function transfer(
         address _to,
@@ -230,7 +239,10 @@ contract SingleTransferToken is ERC721 {
         transferToken(msg.sender, _to);
     }
 
-    /// Send _tokenId token from address _from to address _to
+    /// Third-party initiates transfer of token from address _from to address _to
+    /// @param _from The address for the token to be transferred from.
+    /// @param _to The address for the token to be transferred to.
+    /// @param _tokenId The ID of the Token that can be transferred if this call succeeds.
     /// @dev Required for ERC-721 compliance.
     function transferFrom(
         address _from,
@@ -246,7 +258,7 @@ contract SingleTransferToken is ERC721 {
     }
 
     /* PRIVATE FUNCTIONS */
-    /// For checking approval of transfer
+    /// For checking approval of transfer for address _to
     function isApproved(address _to) private view returns (bool approval) {
         return approved == _to;
     }
@@ -256,13 +268,13 @@ contract SingleTransferToken is ERC721 {
         return _to != address(0);
     }
 
-    /// Verifying that tokenId is valid
+    /// Verifying that token id _tokenId is valid
     function tokenIdMatches(uint256 _tokenId) private view returns (bool matches) {
         require(_tokenId == TOKEN_ID);
         _;
     }
 
-    /// For transfering token from one owner to the next, and clearing approved
+    /// For transfering token from address _from to address _to, and clearing approved log
     function transferToken(address _from, address _to) private {
         tokenOwner = _to;
         // reset approved log
