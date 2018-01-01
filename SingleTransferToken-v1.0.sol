@@ -8,7 +8,7 @@ contract ERC721 {
     function approve(address _to, uint256 _tokenId) public;
     function balanceOf(address _owner) public view returns (uint256 balance);
     function implementsERC721() public pure returns (bool);
-    function ownerOf(uint256 _tokenId) public view returns (address owner);
+    function ownerOf(uint256 _tokenId) public view returns (address addr);
     function takeOwnership(uint256 _tokenId) public;
     function totalSupply() public view returns (uint256 total);
     function transferFrom(address _from, address _to, uint256 _tokenId) public;
@@ -123,10 +123,10 @@ contract SingleTransferToken is ERC721 {
     function ownerOf(uint256 _tokenId)
         public
         view
-        returns (address owner)
+        returns (address addr)
     {
         require(tokenIdMatches(_tokenId));
-        owner = tokenOwner;
+        return tokenOwner;
     }
 
     // Allows someone to send ether and obtain the token
