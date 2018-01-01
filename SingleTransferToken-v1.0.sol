@@ -1,4 +1,4 @@
-pragma solidity ^0.4.8;
+pragma solidity 0.4.19;
 
 
 /// @title Interface for contracts conforming to ERC-721: Non-Fungible Tokens
@@ -113,8 +113,8 @@ contract SingleTransferToken is ERC721 {
         return true;
     }
 
-    function name() public view returns (string name) {
-        name = _name;
+    function name() public constant returns (string) {
+        return _name;
     }
 
     /// For querying owner of token
@@ -131,8 +131,8 @@ contract SingleTransferToken is ERC721 {
 
     // Allows someone to send ether and obtain the token
     function purchaseToken() public payable {
-        oldOwner = tokenOwner;
-        newOwner = msg.sender;
+        address oldOwner = tokenOwner;
+        address newOwner = msg.sender;
 
         // Making sure token owner is not sending to self
         require(oldOwner != newOwner);
@@ -144,7 +144,8 @@ contract SingleTransferToken is ERC721 {
         require(msg.value >= sellingPrice);
 
         // If sent amount is greater than sellingPrice, save diff and refund below.
-        excessValue = msg.value - currentPrice;
+        // NOTE:  Overflow danger???
+        uint256 excessValue = msg.value - currentPrice;
 
         // Update prices
         currentPrice = sellingPrice;
@@ -162,24 +163,16 @@ contract SingleTransferToken is ERC721 {
         transferToken(oldOwner, newOwner);
 
         // Pay previous tokenOwner
-        payment = currentPrice * 94/100;
+        // NOTE:  Overflow danger???
+        uint256 payment = currentPrice * 94/100;
         oldOwner.transfer(payment); //(1-0.06)
 
         // Pay commission to contractOwner
         contractOwner.transfer(currentPrice - payment);
 
-        if (excessValue) {
+        if (excessValue > 0) {
             msg.sender.transfer(excessValue);
         }
-
-        //if contact balance is greater than 1000000000000000 wei,
-        //transfer balance to the contract owner
-        //if (this.balance >= 1000000000000000) {
-
-        //    owner.transfer(this.balance);
-
-        //}
-
     }
 /*
     function payout(address _to) public onlyContractOwner {
@@ -193,8 +186,8 @@ contract SingleTransferToken is ERC721 {
     } */
 
     /// For querying the symbol of the contract
-    function symbol() public view returns (string symbol) {
-        symbol = _symbol;
+    function symbol() public view returns (string symb) {
+        return _symbol;
     }
 
     /// @notice Allow pre-approved user to take ownership of a token
@@ -219,7 +212,6 @@ contract SingleTransferToken is ERC721 {
     }
 
     /// For querying totalSupply of token
-    /// @param _tokenId The ID of the Token that for the inquiry.
     /// @dev Required for ERC-721 compliance.
     function totalSupply() public view returns (uint256 total) {
         return TOTAL_SUPPLY;
@@ -259,19 +251,18 @@ contract SingleTransferToken is ERC721 {
 
     /* PRIVATE FUNCTIONS */
     /// For checking approval of transfer for address _to
-    function isApproved(address _to) private view returns (bool approval) {
+    function isApproved(address _to) private view returns (bool) {
         return approved == _to;
     }
 
     /// Safety check on _to address to prevent against an unexpected 0x0 default.
-    function notNullToAddress(address _to) private view returns (bool notNull) {
+    function notNullToAddress(address _to) private pure returns (bool) {
         return _to != address(0);
     }
 
     /// Verifying that token id _tokenId is valid
-    function tokenIdMatches(uint256 _tokenId) private view returns (bool matches) {
-        require(_tokenId == TOKEN_ID);
-        _;
+    function tokenIdMatches(uint256 _tokenId) private pure returns (bool) {
+        return _tokenId == TOKEN_ID;
     }
 
     /// For transfering token from address _from to address _to, and clearing approved log
