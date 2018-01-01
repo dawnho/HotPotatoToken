@@ -43,7 +43,7 @@ contract SingleTransferToken is ERC721 {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
     // Owner of this contract
-    address private contractOwner;
+    address private owner;
 
     // Current owner of the token
     address public tokenOwner;
@@ -53,7 +53,7 @@ contract SingleTransferToken is ERC721 {
 
     /// Access modifier for contract owner only functionality
     modifier onlyContractOwner() {
-        require(msg.sender == contractOwner);
+        require(msg.sender == owner);
         _;
     }
 
@@ -70,7 +70,7 @@ contract SingleTransferToken is ERC721 {
 
         _symbol = tokenSymbol;
 
-        contractOwner = msg.sender;
+        owner = msg.sender;
 
         tokenOwner = msg.sender;
 
@@ -167,8 +167,8 @@ contract SingleTransferToken is ERC721 {
         uint256 payment = currentPrice * 94/100;
         oldOwner.transfer(payment); //(1-0.06)
 
-        // Pay commission to contractOwner
-        _payout(contractOwner);
+        // Pay commission to owner
+        _payout(owner);
 
         if (excessValue > 0) {
             msg.sender.transfer(excessValue);
@@ -258,7 +258,7 @@ contract SingleTransferToken is ERC721 {
     function _payout(address _to) private {
         if (this.balance > 1 ether) {
             if (_to == address(0)) {
-                contractOwner.transfer(this.balance);
+                owner.transfer(this.balance);
             } else {
                 _to.transfer(this.balance);
             }
