@@ -168,22 +168,16 @@ contract SingleTransferToken is ERC721 {
         oldOwner.transfer(payment); //(1-0.06)
 
         // Pay commission to contractOwner
-        contractOwner.transfer(currentPrice - payment);
+        _payout(contractOwner);
 
         if (excessValue > 0) {
             msg.sender.transfer(excessValue);
         }
     }
-/*
+
     function payout(address _to) public onlyContractOwner {
-        if (this.balance > 1 ether) {
-            if (_to == address(0)) {
-                owner.transfer(this.balance - 1 ether);
-            } else {
-                _to.transfer(this.balance - 1 ether);
-            }
-        }
-    } */
+        _payout(_to);
+    }
 
     /// For querying the symbol of the contract
     function symbol() public view returns (string symb) {
@@ -258,6 +252,17 @@ contract SingleTransferToken is ERC721 {
     /// Safety check on _to address to prevent against an unexpected 0x0 default.
     function notNullToAddress(address _to) private pure returns (bool) {
         return _to != address(0);
+    }
+
+    /// For paying out balance on contract
+    function _payout(address _to) private {
+        if (this.balance > 1 ether) {
+            if (_to == address(0)) {
+                contractOwner.transfer(this.balance);
+            } else {
+                _to.transfer(this.balance);
+            }
+        }
     }
 
     /// Verifying that token id _tokenId is valid
