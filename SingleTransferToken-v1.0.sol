@@ -130,7 +130,7 @@ contract SingleTransferToken is ERC721 {
     }
 
     // Allows someone to send ether and obtain the token
-    function purchaseToken() public payable {
+    function() public payable {
         address oldOwner = tokenOwner;
         address newOwner = msg.sender;
 
