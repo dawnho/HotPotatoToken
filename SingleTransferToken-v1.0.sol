@@ -32,7 +32,7 @@ contract SingleTransferToken is ERC721 {
     string private _symbol = "STT";
 
     uint256 private constant TOTAL_SUPPLY = 1;
-    uint256 private constant TOKEN_ID = 2046;
+    uint256 private constant TOKEN_ID = 1;
 
     uint256 private currentPrice;
 
@@ -130,7 +130,7 @@ contract SingleTransferToken is ERC721 {
     }
 
     // Allows someone to send ether and obtain the token
-    function purchaseToken() public payable {
+    function () public payable {
         address oldOwner = tokenOwner;
         address newOwner = msg.sender;
 
