@@ -2,14 +2,18 @@
 Contract containing single non-fungible token
 
 ## Development Setup
-1. Install NodeJS (5.0+), npm & [Truffle](http://truffleframework.com/)
+1. Install NodeJS (5.0+), npm
 
-2. Install dependencies
+2. Install [Truffle](http://truffleframework.com/) globally:
+`$ npm install -g truffle`
+
+3. Install dependencies
 `$ npm install`
 
-3. Run development console:
+4. Run development console:
 `$ truffle develop`
-4. In the development console, run:
+
+5. In the development console, run:
 ```
 > compile
 > migrate
