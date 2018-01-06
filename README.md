@@ -1,9 +1,19 @@
 # Single Transfer Token
 Contract containing single non-fungible token
 
-## Development Set-up
-Install Node, NPM, Truffle
-`npm install`
+## Development Setup
+1. Install NodeJS (5.0+), npm & [Truffle](http://truffleframework.com/)
+
+2. Install dependencies
+`$ npm install`
+
+3. Run development console:
+`$ truffle develop`
+4. In the development console, run:
+```
+> compile
+> migrate
+```
 
 ## Useful ERC-721 references
 - [ERC-721 standard](https://github.com/ethereum/eips/issues/721)
