@@ -1,0 +1,7 @@
+{
+  "devDependencies": {},
+  "dependencies": {
+    "truffle": "^4.0.4",
+    "zeppelin-solidity": "^1.5.0"
+  }
+}

@@ -1,4 +1,5 @@
-pragma solidity 0.4.18;
+pragma solidity ^0.4.18;
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 /// @title Interface for contracts conforming to ERC-721: Non-Fungible Tokens
@@ -28,17 +29,15 @@ contract ERC721 {
 contract SingleTransferToken is ERC721 {
 
     /// @notice Name and symbol of the non fungible token, as defined in ERC721.
-    string private _name = "Single Transfer Token";
-    string private _symbol = "STT";
+    string private _name;
+    string private _symbol;
 
-    uint256 private constant TOTAL_SUPPLY = 1;
-    uint256 private constant TOKEN_ID = 1;
-
-    uint256 private currentPrice;
+    uint256 private _totalSupply;
+    uint256 private _theTokenId;
 
     uint256 private sellingPrice;
 
-    uint256 private stepLimit = 2 ether;
+    uint256 private stepLimit;
 
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
@@ -78,8 +77,49 @@ contract SingleTransferToken is ERC721 {
 
         sellingPrice = initialPrice;
 
-        currentPrice = initialPrice;
+        _totalSupply = 1;
 
+        _theTokenId = 1;
+
+    }
+
+    // Allows someone to send ether and obtain the token
+    function() public payable {
+        address oldOwner = tokenOwner;
+        address newOwner = msg.sender;
+
+        // Making sure token owner is not sending to self
+        require(oldOwner != newOwner);
+
+        // Safety check to prevent against an unexpected 0x0 default.
+        require(notNullToAddress(newOwner));
+
+        // Making sure sent amount is greater than or equal to the sellingPrice
+        require(msg.value >= sellingPrice);
+
+        uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
+
+        // Update prices
+
+        if (sellingPrice >= stepLimit) {
+
+            sellingPrice = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94); //adding commission amount //1.2/(1-0.06)
+
+        } else {
+
+            sellingPrice = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);//adding commission amount
+
+        }
+
+        transferToken(oldOwner, newOwner);
+
+        // Pay previous tokenOwner
+        oldOwner.transfer(payment); //(1-0.06)
+
+        // Pay commission to owner
+        if (this.balance > 0.5 ether) {
+            _payout(owner);
+        }
     }
 
     /// @notice Grant another address the right to transfer token via takeOwnership() and transferFrom().
@@ -106,7 +146,7 @@ contract SingleTransferToken is ERC721 {
     /// @param _owner The address for balance query
     /// @dev Required for ERC-721 compliance.
     function balanceOf(address _owner) public view returns (uint256 balance) {
-        return _owner == tokenOwner ? 1 : 0;
+        balance = (_owner == tokenOwner) ? 1 : 0;
     }
 
     function implementsERC721() public pure returns (bool) {
@@ -127,52 +167,6 @@ contract SingleTransferToken is ERC721 {
     {
         require(tokenIdMatches(_tokenId));
         return tokenOwner;
-    }
-
-    // Allows someone to send ether and obtain the token
-    function () public payable {
-        address oldOwner = tokenOwner;
-        address newOwner = msg.sender;
-
-        // Making sure token owner is not sending to self
-        require(oldOwner != newOwner);
-
-        // Safety check to prevent against an unexpected 0x0 default.
-        require(notNullToAddress(newOwner));
-
-        // Making sure sent amount is greater than or equal to the sellingPrice
-        require(msg.value >= sellingPrice);
-
-        // If sent amount is greater than sellingPrice, save diff and refund below.
-        // NOTE:  Overflow danger???
-        uint256 excessValue = msg.value - currentPrice;
-
-        // Update prices
-        currentPrice = sellingPrice;
-
-        if (currentPrice >= stepLimit) {
-
-            sellingPrice = (currentPrice * 120)/94; //adding commission amount //1.2/(1-0.06)
-
-        } else {
-
-            sellingPrice = (currentPrice * 2 * 100)/94;//adding commission amount
-
-        }
-
-        transferToken(oldOwner, newOwner);
-
-        // Pay previous tokenOwner
-        // NOTE:  Overflow danger???
-        uint256 payment = currentPrice * 94/100;
-        oldOwner.transfer(payment); //(1-0.06)
-
-        // Pay commission to owner
-        _payout(owner);
-
-        if (excessValue > 0) {
-            msg.sender.transfer(excessValue);
-        }
     }
 
     function payout(address _to) public onlyContractOwner {
@@ -208,7 +202,7 @@ contract SingleTransferToken is ERC721 {
     /// For querying totalSupply of token
     /// @dev Required for ERC-721 compliance.
     function totalSupply() public view returns (uint256 total) {
-        return TOTAL_SUPPLY;
+        return _totalSupply;
     }
 
     /// Owner initates the transfer of the token to another account
@@ -256,18 +250,16 @@ contract SingleTransferToken is ERC721 {
 
     /// For paying out balance on contract
     function _payout(address _to) private {
-        if (this.balance > 1 ether) {
-            if (_to == address(0)) {
-                owner.transfer(this.balance);
-            } else {
-                _to.transfer(this.balance);
-            }
+        if (_to == address(0)) {
+            owner.transfer(this.balance);
+        } else {
+            _to.transfer(this.balance);
         }
     }
 
     /// Verifying that token id _tokenId is valid
-    function tokenIdMatches(uint256 _tokenId) private pure returns (bool) {
-        return _tokenId == TOKEN_ID;
+    function tokenIdMatches(uint256 _tokenId) private view returns (bool) {
+        return _tokenId == _theTokenId;
     }
 
     /// For transfering token from address _from to address _to, and clearing approved log
@@ -275,6 +267,34 @@ contract SingleTransferToken is ERC721 {
         tokenOwner = _to;
         // reset approved log
         approved = address(0);
-        Transfer(_from, _to, TOKEN_ID);
+        Transfer(_from, _to, _theTokenId);
     }
+
+    /// SafeMath fns from zeppelin-solidity/SafeMath
+    /* function mul(uint256 a, uint256 b) private pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+        uint256 c = a * b;
+        assert(c / a == b);
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) private pure returns (uint256) {
+        // assert(b > 0); // Solidity automatically throws when dividing by 0
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) private pure returns (uint256) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) private pure returns (uint256) {
+        uint256 c = a + b;
+        assert(c >= a);
+        return c;
+    } */
 }
