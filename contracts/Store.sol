@@ -1,5 +1,5 @@
-pragma solidity ^0.4.18;
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+pragma solidity ^0.4.18; // solhint-disable-line
+import "zeppelin-solidity/contracts/math/SafeMath.sol"; // solhint-disable-line
 
 
 /// @title Interface for contracts conforming to ERC-721: Non-Fungible Tokens
@@ -42,7 +42,7 @@ contract SingleTransferToken is ERC721 {
   event Transfer(address indexed from, address indexed to, uint256 amount);
 
   // Owner of this contract
-  address private owner;
+  address public owner;
 
   // Current owner of the token
   address public tokenOwner;
