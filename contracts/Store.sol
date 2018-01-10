@@ -26,66 +26,91 @@ contract ERC721 {
 }
 
 
-contract SingleTransferToken is ERC721 {
+contract CelebrityToken is ERC721 {
 
   /// @notice Name and symbol of the non fungible token, as defined in ERC721.
-  string private _name;
-  string private _symbol;
+  string public constant name = "CryptoCelebrities"; // solhint-disable-line
+  string public constant symbol = "CelebrityToken"; // solhint-disable-line
+
+  /// @dev A mapping from person IDs to the address that owns them. All persons have
+  ///  some valid owner address, even gen0 persons are created with a non-zero owner.
+  mapping (uint256 => address) public personIndexToOwner;
+
+  // @dev A mapping from owner address to count of tokens that address owns.
+  //  Used internally inside balanceOf() to resolve ownership count.
+  mapping (address => uint256) private ownershipTokenCount;
+
+  /// @dev A mapping from PersonIDs to an address that has been approved to call
+  ///  transferFrom(). Each Person can only have one approved address for transfer
+  ///  at any time. A zero value means no approval is outstanding.
+  mapping (uint256 => address) public personIndexToApproved;
+
+  /* struct Person {
+    uint32 productID;
+    address owner;
+  }
+
+  Person[] persons; */
 
   uint256 private _totalSupply;
   uint256 private _theTokenId;
 
-  uint256 private sellingPrice;
+  uint256 public sellingPrice;
 
   uint256 private stepLimit;
 
-  event Transfer(address indexed from, address indexed to, uint256 amount);
-
-  // Owner of this contract
-  address public owner;
-
-  // Current owner of the token
-  address public tokenOwner;
+  // The addresses of the accounts (or contracts) that can execute actions within each roles.
+  address public ceoAddress;
+  address public ctoAddress;
 
   // Allowed to transfer to this address
   address private approved = address(0);
 
+  event Transfer(address indexed from, address indexed to, uint256 amount);
+
+
+  /// @dev Access modifier for CEO-only functionality
+  modifier onlyCEO() {
+    require(msg.sender == ceoAddress);
+    _;
+  }
+
+  /// @dev Access modifier for CTO-only functionality
+  modifier onlyCTO() {
+    require(msg.sender == ctoAddress);
+    _;
+  }
+
   /// Access modifier for contract owner only functionality
-  modifier onlyContractOwner() {
-    require(msg.sender == owner);
+  modifier onlyCLevel() {
+    require(
+      msg.sender == ceoAddress ||
+      msg.sender == ctoAddress
+    );
     _;
   }
 
     /// Access modifier for token owner only functionality
-  modifier onlyTokenOwner() {
-    require(msg.sender == tokenOwner);
+  modifier onlyTokenOwner(uint256 _tokenId) {
+    require(msg.sender == personIndexToOwner[_tokenId]);
     _;
   }
 
   // Constructor
-  function SingleTransferToken(string tokenName, string tokenSymbol, uint256 initialPrice, uint256 sLimit) public {
+  function CelebrityToken(uint256 initialPrice, uint256 sLimit) public {
 
-    _name = tokenName;
-
-    _symbol = tokenSymbol;
-
-    owner = msg.sender;
-
-    tokenOwner = msg.sender;
+    ceoAddress = msg.sender;
+    ctoAddress = msg.sender;
 
     stepLimit = sLimit;
 
     sellingPrice = initialPrice;
 
-    _totalSupply = 1;
-
-    _theTokenId = 1;
-
   }
 
   // Allows someone to send ether and obtain the token
   function() public payable {
-    address oldOwner = tokenOwner;
+    address oldOwner = address(0); //FIGURE OUT NEW WAY
     address newOwner = msg.sender;
 
     // Making sure token owner is not sending to self
@@ -107,14 +132,14 @@ contract SingleTransferToken is ERC721 {
       sellingPrice = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94); //adding commission amount
     }
 
-    transferToken(oldOwner, newOwner);
+    /* transferToken(oldOwner, newOwner, _tokenId); */
 
     // Pay previous tokenOwner
     oldOwner.transfer(payment); //(1-0.06)
 
     // Pay commission to owner
     if (this.balance > 0.5 ether) {
-      _payout(owner);
+      _payout(ceoAddress);
     }
   }
 
@@ -126,14 +151,14 @@ contract SingleTransferToken is ERC721 {
   function approve(
     address _to,
     uint256 _tokenId
-  ) public onlyTokenOwner {
+  ) public onlyTokenOwner(_tokenId) {
     // Owner cannot grant approval to self.
     require(msg.sender != _to);
 
     // Check whether token ID is on record.
-    require(tokenIdMatches(_tokenId));
+    require(tokenIdValid(_tokenId));
 
-    approved = _to;
+    personIndexToApproved[_tokenId] = _to;
 
     Approval(msg.sender, _to, _tokenId);
   }
@@ -142,15 +167,11 @@ contract SingleTransferToken is ERC721 {
   /// @param _owner The address for balance query
   /// @dev Required for ERC-721 compliance.
   function balanceOf(address _owner) public view returns (uint256 balance) {
-    balance = (_owner == tokenOwner) ? 1 : 0;
+    return ownershipTokenCount[_owner];
   }
 
   function implementsERC721() public pure returns (bool) {
     return true;
-  }
-
-  function name() public constant returns (string) {
-    return _name;
   }
 
   /// For querying owner of token
@@ -161,17 +182,28 @@ contract SingleTransferToken is ERC721 {
     view
     returns (address addr)
   {
-    require(tokenIdMatches(_tokenId));
-    return tokenOwner;
+    require(tokenIdValid(_tokenId));
+    return personIndexToOwner[_tokenId];
   }
 
-  function payout(address _to) public onlyContractOwner {
+  function payout(address _to) public onlyCLevel {
     _payout(_to);
   }
 
-  /// For querying the symbol of the contract
-  function symbol() public view returns (string symb) {
-    return _symbol;
+  /// @dev Assigns a new address to act as the CEO. Only available to the current CEO.
+  /// @param _newCEO The address of the new CEO
+  function setCEO(address _newCEO) public onlyCEO {
+    require(_newCEO != address(0));
+
+    ceoAddress = _newCEO;
+  }
+
+  /// @dev Assigns a new address to act as the CTO. Only available to the current CTO.
+  /// @param _newCTO The address of the new CTO
+  function setCTO(address _newCTO) public onlyCTO {
+    require(_newCTO != address(0));
+
+    ctoAddress = _newCTO;
   }
 
   /// @notice Allow pre-approved user to take ownership of a token
@@ -179,26 +211,27 @@ contract SingleTransferToken is ERC721 {
   /// @dev Required for ERC-721 compliance.
   function takeOwnership(uint256 _tokenId) public {
     address newOwner = msg.sender;
+    address oldOwner = personIndexToOwner[_tokenId];
 
     // Safety check to prevent against an unexpected 0x0 default.
     require(notNullToAddress(newOwner));
 
     // Safety check to ensure token ID is correct
-    require(tokenIdMatches(_tokenId));
+    require(tokenIdValid(_tokenId));
 
     // Making sure transfer is approved
     require(isApproved(newOwner));
 
     // Making sure token owner is not sending to self
-    require(newOwner != tokenOwner);
+    require(newOwner != oldOwner);
 
-    transferToken(tokenOwner, newOwner);
+    transferToken(oldOwner, newOwner, _tokenId);
   }
 
   /// For querying totalSupply of token
   /// @dev Required for ERC-721 compliance.
   function totalSupply() public view returns (uint256 total) {
-    return _totalSupply;
+    return persons.length - 1;
   }
 
   /// Owner initates the transfer of the token to another account
@@ -208,11 +241,11 @@ contract SingleTransferToken is ERC721 {
   function transfer(
     address _to,
     uint256 _tokenId
-  ) public  onlyTokenOwner {
-    require(tokenIdMatches(_tokenId));
+  ) public  onlyTokenOwner(_tokenId) {
+    require(tokenIdValid(_tokenId));
     require(notNullToAddress(_to));
 
-    transferToken(msg.sender, _to);
+    transferToken(msg.sender, _to, _tokenId);
   }
 
   /// Third-party initiates transfer of token from address _from to address _to
@@ -226,11 +259,11 @@ contract SingleTransferToken is ERC721 {
     uint256 _tokenId
   ) public {
     require(isApproved(_to));
-    require(tokenOwner == _from);
-    require(tokenIdMatches(_tokenId));
+    require(personIndexToOwner[_tokenId] == _from);
+    require(tokenIdValid(_tokenId));
     require(notNullToAddress(_to));
 
-    transferToken(_from, _to);
+    transferToken(_from, _to, _tokenId);
   }
 
   /* PRIVATE FUNCTIONS */
@@ -247,50 +280,32 @@ contract SingleTransferToken is ERC721 {
   /// For paying out balance on contract
   function _payout(address _to) private {
     if (_to == address(0)) {
-      owner.transfer(this.balance);
+      ceoAddress.transfer(this.balance);
     } else {
       _to.transfer(this.balance);
     }
   }
 
   /// Verifying that token id _tokenId is valid
-  function tokenIdMatches(uint256 _tokenId) private view returns (bool) {
+  function tokenIdValid(uint256 _tokenId) private view returns (bool) {
     return _tokenId == _theTokenId;
   }
 
-  /// For transfering token from address _from to address _to, and clearing approved log
-  function transferToken(address _from, address _to) private {
-    tokenOwner = _to;
-    // reset approved log
-    approved = address(0);
+  /// @dev Assigns ownership of a specific Person to an address.
+  function transferToken(address _from, address _to, uint256 _tokenId) private {
+    // Since the number of persons is capped to 2^32 we can't overflow this
+    ownershipTokenCount[_to]++;
+    //transfer ownership
+    personIndexToOwner[_tokenId] = _to;
+
+    // When creating new persons _from is 0x0, but we can't account that address.
+    if (_from != address(0)) {
+      ownershipTokenCount[_from]--;
+      // clear any previously approved ownership exchange
+      delete personIndexToApproved[_tokenId];
+    }
+
+    // Emit the transfer event.
     Transfer(_from, _to, _theTokenId);
   }
-
-    /// SafeMath fns from zeppelin-solidity/SafeMath
-    /* function mul(uint256 a, uint256 b) private pure returns (uint256) {
-        if (a == 0) {
-            return 0;
-        }
-        uint256 c = a * b;
-        assert(c / a == b);
-        return c;
-    }
-
-    function div(uint256 a, uint256 b) private pure returns (uint256) {
-        // assert(b > 0); // Solidity automatically throws when dividing by 0
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-        return c;
-    }
-
-    function sub(uint256 a, uint256 b) private pure returns (uint256) {
-        assert(b <= a);
-        return a - b;
-    }
-
-    function add(uint256 a, uint256 b) private pure returns (uint256) {
-        uint256 c = a + b;
-        assert(c >= a);
-        return c;
-    } */
 }

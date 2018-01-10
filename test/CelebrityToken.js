@@ -1,25 +1,25 @@
-// Specifically request an abstraction for SingleTransferToken
-let SingleTransferToken = artifacts.require("SingleTransferToken");
-import expectThrow from "zeppelin-solidity/test/helpers/expectThrow";
+// Specifically request an abstraction for CelebrityToken
+let CelebrityToken = artifacts.require("CelebrityToken");
+// import expectThrow from "zeppelin-solidity/test/helpers/expectThrow";
 
-contract('SingleTransferToken#setup', accounts => {
+contract('CelebrityToken#setup', accounts => {
   it("should set contract up with proper attributes", async () => {
-    let meta = await SingleTransferToken.deployed();
+    let meta = await CelebrityToken.deployed();
     const name = await meta.name.call();
     const owner = await meta.ownerOf.call(1);
     const symbol = await meta.symbol.call();
     const totalSupply = await meta.totalSupply.call();
     const balance = await meta.balanceOf.call(accounts[0]);
-    assert.equal(name, "Test", "Name was set incorrectly");
+    assert.equal(name, "CryptoCelebrities", "Name was set incorrectly");
     assert.equal(owner, accounts[0], "Owner wasn't account one");
-    assert.equal(symbol, "TT", "Symbol was set incorrectly");
+    assert.equal(symbol, "CelebrityToken", "Symbol was set incorrectly");
     assert.equal(totalSupply, 1, "Total Supply wasn't 1");
     assert.equal(balance.valueOf(), 1, "1 wasn't in the first account");
   });
 });
-contract('SingleTransferToken#transferFns', accounts => {
+contract('CelebrityToken#transferFns', accounts => {
   it("#transfer should transfer coin correctly", async () => {
-    let meta = await SingleTransferToken.deployed();
+    let meta = await CelebrityToken.deployed();
 
     // Get initial balances of first and second account.
     let account_one = accounts[0];
@@ -45,7 +45,7 @@ contract('SingleTransferToken#transferFns', accounts => {
   });
 
   it("#transferFrom should transfer coin correctly", async () => {
-    let meta = await SingleTransferToken.deployed();
+    let meta = await CelebrityToken.deployed();
 
     // Get initial balances of first and second account.
     let account_one = accounts[0];
@@ -74,7 +74,7 @@ contract('SingleTransferToken#transferFns', accounts => {
   });
 
   it("#takeOwnership should transfer coin correctly", async () => {
-    let meta = await SingleTransferToken.deployed();
+    let meta = await CelebrityToken.deployed();
 
     // Get initial balances of first and second account.
     let account_one = accounts[0];

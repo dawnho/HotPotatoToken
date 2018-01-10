@@ -1,5 +1,9 @@
-var SingleTransferToken = artifacts.require("SingleTransferToken");
+var CelebrityToken = artifacts.require("CelebrityToken");
 
-module.exports = function(deployer) {
-  deployer.deploy(SingleTransferToken);
+module.exports = function(deployer, network) {
+  if (network === "development") {
+    deployer.deploy(CelebrityToken, 1, 2000);
+  } else {
+
+  }
 };
