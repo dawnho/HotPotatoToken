@@ -120,3 +120,39 @@ contract('CelebrityToken#transferFns', accounts => {
     });
   });
 });
+
+contract('CelebrityToken#purchaseFns', accounts => {
+  it("#purchase should operate correctly", async () => {
+    let meta = await CelebrityToken.deployed();
+
+    // Get initial balances of first and second account.
+    let account_one = accounts[0];
+    let account_two = accounts[1];
+
+    let tokenId = 0;
+
+    let account_one_starting_balance;
+    let account_two_starting_balance;
+    let account_one_ending_balance;
+    let account_two_ending_balance;
+
+    return meta.createPromoPerson(accounts[0], "Bob", {from: account_one}).then(() => {
+      return meta.balanceOf.call(account_one);
+    }).then(balance => {
+      account_one_starting_balance = balance.toNumber();
+      return meta.balanceOf.call(account_two);
+    }).then(balance => {
+      account_two_starting_balance = balance.toNumber();
+      return meta.purchase(tokenId, {from: account_two, value: 100000000000000000});
+    }).then(() => {
+      return meta.balanceOf.call(account_one);
+    }).then(balance => {
+      account_one_ending_balance = balance.toNumber();
+      return meta.balanceOf.call(account_two);
+    }).then(balance => {
+      account_two_ending_balance = balance.toNumber();
+      assert.equal(account_one_ending_balance, account_one_starting_balance - 1, "Amount wasn't correctly taken from the sender");
+      assert.equal(account_two_ending_balance, account_two_starting_balance + 1, "Amount wasn't correctly sent to the receiver");
+    });
+  });
+});

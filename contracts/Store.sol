@@ -125,6 +125,7 @@ contract CelebrityToken is ERC721 {
     require(msg.value >= sellingPrice);
 
     uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
+    uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
 
     // Update prices
     if (sellingPrice >= stepLimit) {
@@ -140,10 +141,7 @@ contract CelebrityToken is ERC721 {
     // Pay previous tokenOwner
     oldOwner.transfer(payment); //(1-0.06)
 
-    // Pay commission to owner
-    if (this.balance > 0.5 ether) {
-      _payout(ceoAddress);
-    }
+    msg.sender.transfer(purchaseExcess); // DOUBLE CHECK ATTACK POSS
   }
 
   /// @notice Grant another address the right to transfer token via takeOwnership() and transferFrom().
