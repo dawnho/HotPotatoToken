@@ -15,8 +15,8 @@ contract ERC721 {
   function transferFrom(address _from, address _to, uint256 _tokenId) public;
   function transfer(address _to, uint256 _tokenId) public;
 
-  event Transfer(address indexed from, address indexed to, uint256 amount);
-  event Approval(address indexed owner, address indexed approved, uint256 amount);
+  event Transfer(address indexed from, address indexed to, uint256 tokenId);
+  event Approval(address indexed owner, address indexed approved, uint256 tokenId);
 
   // Optional
   // function name() public view returns (string name);
@@ -40,24 +40,29 @@ contract CelebrityToken is ERC721 {
   //  Used internally inside balanceOf() to resolve ownership count.
   mapping (address => uint256) private ownershipTokenCount;
 
+  mapping (bytes => uint256) private personNameToIndex;
+
   /// @dev A mapping from PersonIDs to an address that has been approved to call
   ///  transferFrom(). Each Person can only have one approved address for transfer
   ///  at any time. A zero value means no approval is outstanding.
   mapping (uint256 => address) public personIndexToApproved;
 
-  /* struct Person {
-    uint32 productID;
+  struct Person {
+    string name;
     address owner;
+    uint256 previousPrice;
+    uint256 sellingPrice;
   }
 
-  Person[] persons; */
+  Person[] persons;
 
-  uint256 private _totalSupply;
-  uint256 private _theTokenId;
+  //uint256 private _totalSupply;
+  //uint256 private _theTokenId;
 
-  uint256 public sellingPrice;
+  uint256 private sellingPrice;
 
-  uint256 private stepLimit;
+  uint256 private firstStepLimit;
+  uint256 private secondStepLimit;
 
   // The addresses of the accounts (or contracts) that can execute actions within each roles.
   address public ceoAddress;
@@ -66,8 +71,7 @@ contract CelebrityToken is ERC721 {
   // Allowed to transfer to this address
   address private approved = address(0);
 
-  event Transfer(address indexed from, address indexed to, uint256 amount);
-
+  event Transfer(address indexed from, address indexed to, uint256 tokenId);
 
   /// @dev Access modifier for CEO-only functionality
   modifier onlyCEO() {
@@ -97,21 +101,38 @@ contract CelebrityToken is ERC721 {
   }
 
   // Constructor
-  function CelebrityToken(uint256 initialPrice, uint256 sLimit) public {
+  function CelebrityToken(uint256 initialPrice, uint256 sLimit1, uint256 sLimit2) public {
 
     ceoAddress = msg.sender;
     ctoAddress = msg.sender;
 
-    stepLimit = sLimit;
-
+    firstStepLimit = sLimit1;
+    secondStepLimit = sLimit2;
+    // sellingPrice is used to determine the initialPrice when creating celebrities
     sellingPrice = initialPrice;
+
+  }
+
+  function createCelebrity(string name) onlyCLevel{
+
+    Person memory person = Person(name, msg.sender, sellingPrice, sellingPrice);
+    uint256 tokenId = persons.push(person);
+    transferToken(0, msg.sender, tokenId);
 
   }
 
   // Allows someone to send ether and obtain the token
   function() public payable {
-    address oldOwner = address(0); //FIGURE OUT NEW WAY
+    // Todo : Metamask sends msg.data as bytes,
+    // We have to convert bytes to uint256, but there is no easy way
+    // We may have to get tokenId as a parameter to a function call, instead of using fallback funciton
+    uint256 tokenId = msg.data; // WON'T COMPILE
+
+    address oldOwner = ownerOf(tokenId); //FIGURE OUT NEW WAY
     address newOwner = msg.sender;
+
+    // Obtain the person represented by tokenId
+    Person memory token = persons(tokenId);
 
     // Making sure token owner is not sending to self
     require(oldOwner != newOwner);
@@ -120,19 +141,33 @@ contract CelebrityToken is ERC721 {
     require(notNullToAddress(newOwner));
 
     // Making sure sent amount is greater than or equal to the sellingPrice
-    require(msg.value >= sellingPrice);
+    require(msg.value >= token.sellingPrice);
 
-    uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
+    uint256 payment = SafeMath.div(SafeMath.mul(token.sellingPrice, 94), 100);
 
     // Update prices
 
-    if (sellingPrice >= stepLimit) {
-      sellingPrice = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94); //adding commission amount //1.2/(1-0.06)
+    // We need to store sold price, game UI needs this info
+    token.previousPrice = token.sellingPrice;
+
+    if( token.sellingPrice <= firstStepLimit){
+
+      // first stage
+      token.sellingPrice = div(mul(token.sellingPrice, 200), 94);//adding commission amount //1.2/(1-0.06)
+
+    } else if (token.sellingPrice <= secondStepLimit) {
+
+      // second stage
+      token.sellingPrice = div(mul(token.sellingPrice, 120), 94); //adding commission amount //1.2/(1-0.06)
+
     } else {
-      sellingPrice = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94); //adding commission amount
+
+      // third stage
+      token.sellingPrice = div(mul(token.sellingPrice, 115), 94);//adding commission amount //1.2/(1-0.06)
+
     }
 
-    /* transferToken(oldOwner, newOwner, _tokenId); */
+    transferToken(oldOwner, newOwner, _tokenId);
 
     // Pay previous tokenOwner
     oldOwner.transfer(payment); //(1-0.06)
@@ -231,7 +266,8 @@ contract CelebrityToken is ERC721 {
   /// For querying totalSupply of token
   /// @dev Required for ERC-721 compliance.
   function totalSupply() public view returns (uint256 total) {
-    return persons.length - 1;
+    return persons.length;
+    //return persons.length - 1;
   }
 
   /// Owner initates the transfer of the token to another account
@@ -288,7 +324,7 @@ contract CelebrityToken is ERC721 {
 
   /// Verifying that token id _tokenId is valid
   function tokenIdValid(uint256 _tokenId) private view returns (bool) {
-    return _tokenId == _theTokenId;
+    return _tokenId >= 0 && _tokenId < persons.length;
   }
 
   /// @dev Assigns ownership of a specific Person to an address.
@@ -306,6 +342,6 @@ contract CelebrityToken is ERC721 {
     }
 
     // Emit the transfer event.
-    Transfer(_from, _to, _theTokenId);
+    Transfer(_from, _to, _tokenId);
   }
 }
