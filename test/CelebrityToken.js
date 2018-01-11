@@ -6,17 +6,16 @@ contract('CelebrityToken#setup', accounts => {
   it("should set contract up with proper attributes", async () => {
     let meta = await CelebrityToken.deployed();
     const name = await meta.name.call();
-    const owner = await meta.ownerOf.call(1);
     const symbol = await meta.symbol.call();
     const totalSupply = await meta.totalSupply.call();
     const balance = await meta.balanceOf.call(accounts[0]);
     assert.equal(name, "CryptoCelebrities", "Name was set incorrectly");
-    assert.equal(owner, accounts[0], "Owner wasn't account one");
     assert.equal(symbol, "CelebrityToken", "Symbol was set incorrectly");
-    assert.equal(totalSupply, 1, "Total Supply wasn't 1");
-    assert.equal(balance.valueOf(), 1, "1 wasn't in the first account");
+    assert.equal(totalSupply, 0, "Total Supply wasn't 0");
+    assert.equal(balance.valueOf(), 0, "0 wasn't in the first account");
   });
 });
+
 contract('CelebrityToken#transferFns', accounts => {
   it("#transfer should transfer coin correctly", async () => {
     let meta = await CelebrityToken.deployed();
@@ -25,14 +24,22 @@ contract('CelebrityToken#transferFns', accounts => {
     let account_one = accounts[0];
     let account_two = accounts[1];
 
-    let account_one_starting_balance = await meta.balanceOf.call(account_one);
-    let account_two_starting_balance = await meta.balanceOf.call(account_two);
+    let tokenId = 0;
+
+    let account_one_starting_balance;
+    let account_two_starting_balance;
     let account_one_ending_balance;
     let account_two_ending_balance;
 
-    let tokenId = 1;
-
-    return meta.transfer(account_two, tokenId, {from: account_one}).then(() => {
+    return meta.createPromoPerson(accounts[0], "Bob", {from: account_one}).then(() => {
+      return meta.balanceOf.call(account_one);
+    }).then(balance => {
+      account_one_starting_balance = balance.toNumber();
+      return meta.balanceOf.call(account_two);
+    }).then(balance => {
+      account_two_starting_balance = balance.toNumber();
+      return meta.transfer(account_two, tokenId, {from: account_one});
+    }).then(() => {
       return meta.balanceOf.call(account_one);
     }).then(balance => {
       account_one_ending_balance = balance.toNumber();
@@ -52,15 +59,21 @@ contract('CelebrityToken#transferFns', accounts => {
     let account_two = accounts[1];
     let account_three = accounts[2];
 
-    let account_one_starting_balance = (await meta.balanceOf.call(account_one)).toNumber();
-    let account_two_starting_balance = (await meta.balanceOf.call(account_two)).toNumber();
+    let account_one_starting_balance;
+    let account_two_starting_balance;
     let account_one_ending_balance;
     let account_two_ending_balance;
 
-    let tokenId = 1;
+    let tokenId = 0;
 
-    return meta.approve(account_one, tokenId, {from: account_two}).then(() => {
-      meta.transferFrom(account_two, account_one, tokenId, {from: account_three});
+    return meta.balanceOf.call(account_one).then(balance => {
+      account_one_starting_balance = balance.toNumber();
+      return meta.balanceOf.call(account_two);
+    }).then(balance => {
+      account_two_starting_balance = balance.toNumber();
+      return meta.approve(account_one, tokenId, {from: account_two});
+    }).then(() => {
+      return meta.transferFrom(account_two, account_one, tokenId, {from: account_three});
     }).then(() => {
       return meta.balanceOf.call(account_one);
     }).then(balance => {
@@ -80,15 +93,21 @@ contract('CelebrityToken#transferFns', accounts => {
     let account_one = accounts[0];
     let account_two = accounts[1];
 
-    let account_one_starting_balance = (await meta.balanceOf.call(account_one)).toNumber();
-    let account_two_starting_balance = (await meta.balanceOf.call(account_two)).toNumber();
+    let account_one_starting_balance;
+    let account_two_starting_balance;
     let account_one_ending_balance;
     let account_two_ending_balance;
 
-    let tokenId = 1;
+    let tokenId = 0;
 
-    return meta.approve(account_two, tokenId, {from: account_one}).then(() => {
-      meta.takeOwnership(tokenId, {from: account_two});
+    return meta.balanceOf.call(account_one).then(balance => {
+      account_one_starting_balance = balance.toNumber();
+      return meta.balanceOf.call(account_two);
+    }).then(balance => {
+      account_two_starting_balance = balance.toNumber();
+      return meta.approve(account_two, tokenId, {from: account_one});
+    }).then(() => {
+      return meta.takeOwnership(tokenId, {from: account_two});
     }).then(() => {
       return meta.balanceOf.call(account_one);
     }).then(balance => {

@@ -28,9 +28,26 @@ contract ERC721 {
 
 contract CelebrityToken is ERC721 {
 
+  /*** EVENTS ***/
+
+  /// @dev The Birth event is fired whenever a new person comes into existence.
+  event Birth(address owner, uint256 personId);
+
+  /// @dev Transfer event as defined in current draft of ERC721. Emitted every time a kitten
+  ///  ownership is assigned, including births.
+  event Transfer(address from, address to, uint256 tokenId);
+
+  /*** CONSTANTS ***/
+
   /// @notice Name and symbol of the non fungible token, as defined in ERC721.
-  string public constant name = "CryptoCelebrities"; // solhint-disable-line
-  string public constant symbol = "CelebrityToken"; // solhint-disable-line
+  string public constant NAME = "CryptoCelebrities"; // solhint-disable-line
+  string public constant SYMBOL = "CelebrityToken"; // solhint-disable-line
+
+  uint256 private startingPrice = 0.0001 ether;
+  uint256 private stepLimit = 2 ether;
+  uint256 public constant PROMO_CREATION_LIMIT = 5000;
+
+  /*** STORAGE ***/
 
   /// @dev A mapping from person IDs to the address that owns them. All persons have
   ///  some valid owner address, even gen0 persons are created with a non-zero owner.
@@ -40,48 +57,37 @@ contract CelebrityToken is ERC721 {
   //  Used internally inside balanceOf() to resolve ownership count.
   mapping (address => uint256) private ownershipTokenCount;
 
-  mapping (bytes => uint256) private personNameToIndex;
-
   /// @dev A mapping from PersonIDs to an address that has been approved to call
   ///  transferFrom(). Each Person can only have one approved address for transfer
   ///  at any time. A zero value means no approval is outstanding.
   mapping (uint256 => address) public personIndexToApproved;
 
-  struct Person {
-    string name;
-    address owner;
-    uint256 previousPrice;
-    uint256 sellingPrice;
-  }
-
-  Person[] persons;
-
-  //uint256 private _totalSupply;
-  //uint256 private _theTokenId;
-
-  uint256 private sellingPrice;
-
-  uint256 private firstStepLimit;
-  uint256 private secondStepLimit;
+  // @dev A mapping from PersonIDs to the price of the token.
+  mapping (uint256 => uint256) private personIndexToPrice;
 
   // The addresses of the accounts (or contracts) that can execute actions within each roles.
   address public ceoAddress;
-  address public ctoAddress;
+  address public cooAddress;
 
-  // Allowed to transfer to this address
-  address private approved = address(0);
+  uint256 public promoCreatedCount;
 
-  event Transfer(address indexed from, address indexed to, uint256 tokenId);
+  /*** DATATYPES ***/
+  struct Person {
+    string name;
+  }
 
+  Person[] private persons;
+
+  /*** ACCESS MODIFIERS ***/
   /// @dev Access modifier for CEO-only functionality
   modifier onlyCEO() {
     require(msg.sender == ceoAddress);
     _;
   }
 
-  /// @dev Access modifier for CTO-only functionality
-  modifier onlyCTO() {
-    require(msg.sender == ctoAddress);
+  /// @dev Access modifier for COO-only functionality
+  modifier onlyCOO() {
+    require(msg.sender == cooAddress);
     _;
   }
 
@@ -89,85 +95,47 @@ contract CelebrityToken is ERC721 {
   modifier onlyCLevel() {
     require(
       msg.sender == ceoAddress ||
-      msg.sender == ctoAddress
+      msg.sender == cooAddress
     );
     _;
   }
 
-    /// Access modifier for token owner only functionality
-  modifier onlyTokenOwner(uint256 _tokenId) {
-    require(msg.sender == personIndexToOwner[_tokenId]);
-    _;
-  }
-
   // Constructor
-  function CelebrityToken(uint256 initialPrice, uint256 sLimit1, uint256 sLimit2) public {
+  function CelebrityToken() public {
 
     ceoAddress = msg.sender;
-    ctoAddress = msg.sender;
-
-    firstStepLimit = sLimit1;
-    secondStepLimit = sLimit2;
-    // sellingPrice is used to determine the initialPrice when creating celebrities
-    sellingPrice = initialPrice;
-
-  }
-
-  function createCelebrity(string name) onlyCLevel{
-
-    Person memory person = Person(name, msg.sender, sellingPrice, sellingPrice);
-    uint256 tokenId = persons.push(person);
-    transferToken(0, msg.sender, tokenId);
+    cooAddress = msg.sender;
 
   }
 
   // Allows someone to send ether and obtain the token
-  function() public payable {
-    // Todo : Metamask sends msg.data as bytes,
-    // We have to convert bytes to uint256, but there is no easy way
-    // We may have to get tokenId as a parameter to a function call, instead of using fallback funciton
-    uint256 tokenId = msg.data; // WON'T COMPILE
-
-    address oldOwner = ownerOf(tokenId); //FIGURE OUT NEW WAY
+  function purchase(uint256 _tokenId) public payable {
+    address oldOwner = personIndexToOwner[_tokenId];
     address newOwner = msg.sender;
 
-    // Obtain the person represented by tokenId
-    Person memory token = persons(tokenId);
+    uint256 sellingPrice = personIndexToPrice[_tokenId];
 
     // Making sure token owner is not sending to self
     require(oldOwner != newOwner);
 
     // Safety check to prevent against an unexpected 0x0 default.
-    require(notNullToAddress(newOwner));
+    require(_addressNotNull(newOwner));
 
     // Making sure sent amount is greater than or equal to the sellingPrice
-    require(msg.value >= token.sellingPrice);
+    require(msg.value >= sellingPrice);
 
-    uint256 payment = SafeMath.div(SafeMath.mul(token.sellingPrice, 94), 100);
+    uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
 
     // Update prices
-
-    // We need to store sold price, game UI needs this info
-    token.previousPrice = token.sellingPrice;
-
-    if( token.sellingPrice <= firstStepLimit){
-
-      // first stage
-      token.sellingPrice = div(mul(token.sellingPrice, 200), 94);//adding commission amount //1.2/(1-0.06)
-
-    } else if (token.sellingPrice <= secondStepLimit) {
-
-      // second stage
-      token.sellingPrice = div(mul(token.sellingPrice, 120), 94); //adding commission amount //1.2/(1-0.06)
-
+    if (sellingPrice >= stepLimit) {
+      //adding commission amount //1.2/(1-0.06)
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
     } else {
-
-      // third stage
-      token.sellingPrice = div(mul(token.sellingPrice, 115), 94);//adding commission amount //1.2/(1-0.06)
-
+      //adding commission amount //2.0/(1-0.06)
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);
     }
 
-    transferToken(oldOwner, newOwner, _tokenId);
+    _transfer(oldOwner, newOwner, _tokenId);
 
     // Pay previous tokenOwner
     oldOwner.transfer(payment); //(1-0.06)
@@ -186,12 +154,9 @@ contract CelebrityToken is ERC721 {
   function approve(
     address _to,
     uint256 _tokenId
-  ) public onlyTokenOwner(_tokenId) {
-    // Owner cannot grant approval to self.
-    require(msg.sender != _to);
-
-    // Check whether token ID is on record.
-    require(tokenIdValid(_tokenId));
+  ) public {
+    // Caller must own token.
+    require(_owns(msg.sender, _tokenId));
 
     personIndexToApproved[_tokenId] = _to;
 
@@ -205,8 +170,31 @@ contract CelebrityToken is ERC721 {
     return ownershipTokenCount[_owner];
   }
 
+  /// @dev Creates a new promo Person with the given name, and assignes it to an address.
+  function createPromoPerson(address _owner, string _name) public onlyCOO {
+    address personOwner = _owner;
+    if (personOwner == address(0)) {
+      personOwner = cooAddress;
+    }
+
+    require(promoCreatedCount < PROMO_CREATION_LIMIT);
+
+    promoCreatedCount++;
+    _createPerson(_name, personOwner);
+  }
+
+  /// @dev Creates a new Person with the given name.
+  function createContractPerson(string _name) public onlyCOO {
+    _createPerson(_name, address(this));
+  }
+
   function implementsERC721() public pure returns (bool) {
     return true;
+  }
+
+  /// @dev Required for ERC-721 compliance.
+  function name() public pure returns (string) {
+    return NAME;
   }
 
   /// For querying owner of token
@@ -215,10 +203,10 @@ contract CelebrityToken is ERC721 {
   function ownerOf(uint256 _tokenId)
     public
     view
-    returns (address addr)
+    returns (address owner)
   {
-    require(tokenIdValid(_tokenId));
-    return personIndexToOwner[_tokenId];
+    owner = personIndexToOwner[_tokenId];
+    require(owner != address(0));
   }
 
   function payout(address _to) public onlyCLevel {
@@ -233,12 +221,17 @@ contract CelebrityToken is ERC721 {
     ceoAddress = _newCEO;
   }
 
-  /// @dev Assigns a new address to act as the CTO. Only available to the current CTO.
-  /// @param _newCTO The address of the new CTO
-  function setCTO(address _newCTO) public onlyCTO {
-    require(_newCTO != address(0));
+  /// @dev Assigns a new address to act as the COO. Only available to the current COO.
+  /// @param _newCOO The address of the new COO
+  function setCOO(address _newCOO) public onlyCEO {
+    require(_newCOO != address(0));
 
-    ctoAddress = _newCTO;
+    cooAddress = _newCOO;
+  }
+
+  /// @dev Required for ERC-721 compliance.
+  function symbol() public pure returns (string) {
+    return SYMBOL;
   }
 
   /// @notice Allow pre-approved user to take ownership of a token
@@ -249,25 +242,18 @@ contract CelebrityToken is ERC721 {
     address oldOwner = personIndexToOwner[_tokenId];
 
     // Safety check to prevent against an unexpected 0x0 default.
-    require(notNullToAddress(newOwner));
-
-    // Safety check to ensure token ID is correct
-    require(tokenIdValid(_tokenId));
+    require(_addressNotNull(newOwner));
 
     // Making sure transfer is approved
-    require(isApproved(newOwner));
+    require(_approved(newOwner, _tokenId));
 
-    // Making sure token owner is not sending to self
-    require(newOwner != oldOwner);
-
-    transferToken(oldOwner, newOwner, _tokenId);
+    _transfer(oldOwner, newOwner, _tokenId);
   }
 
   /// For querying totalSupply of token
   /// @dev Required for ERC-721 compliance.
   function totalSupply() public view returns (uint256 total) {
     return persons.length;
-    //return persons.length - 1;
   }
 
   /// Owner initates the transfer of the token to another account
@@ -277,11 +263,11 @@ contract CelebrityToken is ERC721 {
   function transfer(
     address _to,
     uint256 _tokenId
-  ) public  onlyTokenOwner(_tokenId) {
-    require(tokenIdValid(_tokenId));
-    require(notNullToAddress(_to));
+  ) public {
+    require(_owns(msg.sender, _tokenId));
+    require(_addressNotNull(_to));
 
-    transferToken(msg.sender, _to, _tokenId);
+    _transfer(msg.sender, _to, _tokenId);
   }
 
   /// Third-party initiates transfer of token from address _from to address _to
@@ -294,23 +280,50 @@ contract CelebrityToken is ERC721 {
     address _to,
     uint256 _tokenId
   ) public {
-    require(isApproved(_to));
-    require(personIndexToOwner[_tokenId] == _from);
-    require(tokenIdValid(_tokenId));
-    require(notNullToAddress(_to));
+    require(_owns(_from, _tokenId));
+    require(_approved(_to, _tokenId));
+    require(_addressNotNull(_to));
 
-    transferToken(_from, _to, _tokenId);
+    _transfer(_from, _to, _tokenId);
   }
 
   /* PRIVATE FUNCTIONS */
-  /// For checking approval of transfer for address _to
-  function isApproved(address _to) private view returns (bool) {
-    return approved == _to;
+  /// Safety check on _to address to prevent against an unexpected 0x0 default.
+  function _addressNotNull(address _to) private pure returns (bool) {
+    return _to != address(0);
   }
 
-  /// Safety check on _to address to prevent against an unexpected 0x0 default.
-  function notNullToAddress(address _to) private pure returns (bool) {
-    return _to != address(0);
+  /// For checking approval of transfer for address _to
+  function _approved(address _to, uint256 _tokenId) private view returns (bool) {
+    return personIndexToApproved[_tokenId] == _to;
+  }
+
+  /// For creating Person
+  function _createPerson(string _name, address _owner) private {
+    Person memory _person = Person({
+      name: _name
+    });
+    uint256 newPersonId = persons.push(_person) - 1;
+
+    // It's probably never going to happen, 4 billion tokens are A LOT, but
+    // let's just be 100% sure we never let this happen.
+    require(newPersonId == uint256(uint32(newPersonId)));
+
+    Birth(
+      _owner,
+      newPersonId
+    );
+
+    personIndexToPrice[newPersonId] = startingPrice;
+
+    // This will assign ownership, and also emit the Transfer event as
+    // per ERC721 draft
+    _transfer(0, _owner, newPersonId);
+  }
+
+  /// Check for token ownership
+  function _owns(address claimant, uint256 _tokenId) private view returns (bool) {
+    return claimant == personIndexToOwner[_tokenId];
   }
 
   /// For paying out balance on contract
@@ -322,13 +335,8 @@ contract CelebrityToken is ERC721 {
     }
   }
 
-  /// Verifying that token id _tokenId is valid
-  function tokenIdValid(uint256 _tokenId) private view returns (bool) {
-    return _tokenId >= 0 && _tokenId < persons.length;
-  }
-
   /// @dev Assigns ownership of a specific Person to an address.
-  function transferToken(address _from, address _to, uint256 _tokenId) private {
+  function _transfer(address _from, address _to, uint256 _tokenId) private {
     // Since the number of persons is capped to 2^32 we can't overflow this
     ownershipTokenCount[_to]++;
     //transfer ownership
