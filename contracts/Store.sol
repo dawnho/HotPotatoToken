@@ -30,8 +30,11 @@ contract CelebrityToken is ERC721 {
 
   /*** EVENTS ***/
 
+  /// @dev The TokenSold event is fired whenever a token is sold.
+  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address winner);
+
   /// @dev The Birth event is fired whenever a new person comes into existence.
-  event Birth(address owner, uint256 personId);
+  event Birth(uint256 tokenId, string name, address owner);
 
   /// @dev Transfer event as defined in current draft of ERC721. Emitted every time a kitten
   ///  ownership is assigned, including births.
@@ -100,50 +103,13 @@ contract CelebrityToken is ERC721 {
     _;
   }
 
-  // Constructor
+  /*** CONSTRUCTOR ***/
   function CelebrityToken() public {
-
     ceoAddress = msg.sender;
     cooAddress = msg.sender;
-
   }
 
-  // Allows someone to send ether and obtain the token
-  function purchase(uint256 _tokenId) public payable {
-    address oldOwner = personIndexToOwner[_tokenId];
-    address newOwner = msg.sender;
-
-    uint256 sellingPrice = personIndexToPrice[_tokenId];
-
-    // Making sure token owner is not sending to self
-    require(oldOwner != newOwner);
-
-    // Safety check to prevent against an unexpected 0x0 default.
-    require(_addressNotNull(newOwner));
-
-    // Making sure sent amount is greater than or equal to the sellingPrice
-    require(msg.value >= sellingPrice);
-
-    uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
-    uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
-
-    // Update prices
-    if (sellingPrice >= stepLimit) {
-      //adding commission amount //1.2/(1-0.06)
-      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
-    } else {
-      //adding commission amount //2.0/(1-0.06)
-      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);
-    }
-
-    _transfer(oldOwner, newOwner, _tokenId);
-
-    // Pay previous tokenOwner
-    oldOwner.transfer(payment); //(1-0.06)
-
-    msg.sender.transfer(purchaseExcess); // DOUBLE CHECK ATTACK POSS
-  }
-
+  /*** PUBLIC FUNCTIONS ***/
   /// @notice Grant another address the right to transfer token via takeOwnership() and transferFrom().
   /// @param _to The address to be granted transfer approval. Pass address(0) to
   ///  clear all approvals.
@@ -222,6 +188,44 @@ contract CelebrityToken is ERC721 {
 
   function payout(address _to) public onlyCLevel {
     _payout(_to);
+  }
+
+  // Allows someone to send ether and obtain the token
+  function purchase(uint256 _tokenId) public payable {
+    address oldOwner = personIndexToOwner[_tokenId];
+    address newOwner = msg.sender;
+
+    uint256 sellingPrice = personIndexToPrice[_tokenId];
+
+    // Making sure token owner is not sending to self
+    require(oldOwner != newOwner);
+
+    // Safety check to prevent against an unexpected 0x0 default.
+    require(_addressNotNull(newOwner));
+
+    // Making sure sent amount is greater than or equal to the sellingPrice
+    require(msg.value >= sellingPrice);
+
+    uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
+    uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
+
+    // Update prices
+    if (sellingPrice >= stepLimit) {
+      //adding commission amount //1.2/(1-0.06)
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
+    } else {
+      //adding commission amount //2.0/(1-0.06)
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);
+    }
+
+    _transfer(oldOwner, newOwner, _tokenId);
+
+    // Pay previous tokenOwner
+    oldOwner.transfer(payment); //(1-0.06)
+
+    TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], msg.sender);
+
+    msg.sender.transfer(purchaseExcess);
   }
 
   /// @dev Assigns a new address to act as the CEO. Only available to the current CEO.
@@ -324,7 +328,7 @@ contract CelebrityToken is ERC721 {
     _transfer(_from, _to, _tokenId);
   }
 
-  /* PRIVATE FUNCTIONS */
+  /*** PRIVATE FUNCTIONS ***/
   /// Safety check on _to address to prevent against an unexpected 0x0 default.
   function _addressNotNull(address _to) private pure returns (bool) {
     return _to != address(0);
@@ -346,10 +350,7 @@ contract CelebrityToken is ERC721 {
     // let's just be 100% sure we never let this happen.
     require(newPersonId == uint256(uint32(newPersonId)));
 
-    Birth(
-      _owner,
-      newPersonId
-    );
+    Birth(newPersonId, _name, _owner);
 
     personIndexToPrice[newPersonId] = startingPrice;
 
