@@ -350,4 +350,42 @@ contract CelebrityToken is ERC721 {
     // Emit the transfer event.
     Transfer(_from, _to, _tokenId);
   }
+
+  /// @notice Returns all the relevant information about a specific person.
+  /// @param _id The ID of the person of interest.
+  function getPerson(uint256 _id) external view returns (
+      string personName,
+      uint256 sellingPrice,
+      address owner
+  ) {
+      Person storage person = persons[_id];
+      personName = person.name;
+      sellingPrice = personIndexToPrice[_id];
+      owner = personIndexToOwner[_id];
+  }
+
+  /// @param _owner The owner whose celebrity tokens we are interested in.
+  /// @dev This method MUST NEVER be called by smart contract code. First, it's fairly
+  ///  expensive (it walks the entire Persons array looking for cats belonging to owner),
+  ///  but it also returns a dynamic array, which is only supported for web3 calls, and
+  ///  not contract-to-contract calls.
+  function tokensOfOwner(address _owner) external view returns(uint256[] ownerTokens) {
+      uint256 tokenCount = balanceOf(_owner);
+      if (tokenCount == 0) {
+          // Return an empty array
+          return new uint256[](0);
+      } else {
+          uint256[] memory result = new uint256[](tokenCount);
+          uint256 totalPersons = totalSupply();
+          uint256 resultIndex = 0;
+          uint256 personId;
+          for (personId = 0; personId <= totalPersons; personId++) {
+              if (personIndexToOwner[personId] == _owner) {
+                  result[resultIndex] = personId;
+                  resultIndex++;
+              }
+          }
+          return result;
+      }
+  }
 }
