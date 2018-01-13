@@ -122,7 +122,7 @@ contract('CelebrityToken#transferFns', accounts => {
 });
 
 contract('CelebrityToken#purchaseFns', accounts => {
-  it("#purchase should operate correctly", async () => {
+  it("#purchase should operate correctly and update price", async () => {
     let celeb = await CelebrityToken.deployed();
 
     // Get initial balances of first and second account.
@@ -136,6 +136,9 @@ contract('CelebrityToken#purchaseFns', accounts => {
     let account_one_ending_balance;
     let account_two_ending_balance;
 
+    let token_starting_price;
+    let token_ending_price;
+
     return celeb.createPromoPerson(accounts[0], "Bob", {from: account_one}).then(() => {
       return celeb.balanceOf.call(account_one);
     }).then(balance => {
@@ -143,6 +146,9 @@ contract('CelebrityToken#purchaseFns', accounts => {
       return celeb.balanceOf.call(account_two);
     }).then(balance => {
       account_two_starting_balance = balance.toNumber();
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_starting_price = price.toNumber();
       return celeb.purchase(tokenId, {from: account_two, value: 100000000000000000});
     }).then(() => {
       return celeb.balanceOf.call(account_one);
@@ -151,8 +157,12 @@ contract('CelebrityToken#purchaseFns', accounts => {
       return celeb.balanceOf.call(account_two);
     }).then(balance => {
       account_two_ending_balance = balance.toNumber();
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_ending_price = price.toNumber();
       assert.equal(account_one_ending_balance, account_one_starting_balance - 1, "Amount wasn't correctly taken from the sender");
       assert.equal(account_two_ending_balance, account_two_starting_balance + 1, "Amount wasn't correctly sent to the receiver");
+      assert.equal(token_ending_price, parseInt(token_starting_price * 200 / 94), "Price didn't scale right");
     });
   });
   it("#purchasing again should operate correctly", async () => {

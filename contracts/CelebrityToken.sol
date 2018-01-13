@@ -228,7 +228,7 @@ contract CelebrityToken is ERC721 {
     msg.sender.transfer(purchaseExcess);
   }
 
-  function priceOf(address _tokenId) public view {
+  function priceOf(uint256 _tokenId) public view returns (uint256 price) {
     return personIndexToPrice[_tokenId];
   }
 
