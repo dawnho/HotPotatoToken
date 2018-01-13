@@ -30,11 +30,11 @@ contract CelebrityToken is ERC721 {
 
   /*** EVENTS ***/
 
-  /// @dev The TokenSold event is fired whenever a token is sold.
-  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address winner);
-
   /// @dev The Birth event is fired whenever a new person comes into existence.
   event Birth(uint256 tokenId, string name, address owner);
+
+  /// @dev The TokenSold event is fired whenever a token is sold.
+  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address winner);
 
   /// @dev Transfer event as defined in current draft of ERC721. Emitted every time a kitten
   ///  ownership is assigned, including births.
@@ -153,7 +153,7 @@ contract CelebrityToken is ERC721 {
   }
 
   /// @notice Returns all the relevant information about a specific person.
-  /// @param _id The ID of the person of interest.
+  /// @param _tokenId The tokenId of the person of interest.
   function getPerson(uint256 _tokenId) public view returns (
     string personName,
     uint256 sellingPrice,
@@ -226,6 +226,10 @@ contract CelebrityToken is ERC721 {
     TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], msg.sender);
 
     msg.sender.transfer(purchaseExcess);
+  }
+
+  function priceOf(address _tokenId) public view {
+    return personIndexToPrice[_tokenId];
   }
 
   /// @dev Assigns a new address to act as the CEO. Only available to the current CEO.
