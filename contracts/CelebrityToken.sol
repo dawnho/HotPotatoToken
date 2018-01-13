@@ -34,7 +34,7 @@ contract CelebrityToken is ERC721 {
   event Birth(uint256 tokenId, string name, address owner);
 
   /// @dev The TokenSold event is fired whenever a token is sold.
-  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address winner);
+  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address prevOwner, address winner);
 
   /// @dev Transfer event as defined in current draft of ERC721. Emitted every time a kitten
   ///  ownership is assigned, including births.
@@ -223,7 +223,7 @@ contract CelebrityToken is ERC721 {
     // Pay previous tokenOwner
     oldOwner.transfer(payment); //(1-0.06)
 
-    TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], msg.sender);
+    TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], oldOwner, newOwner);
 
     msg.sender.transfer(purchaseExcess);
   }
