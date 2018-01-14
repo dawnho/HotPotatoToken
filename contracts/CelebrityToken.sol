@@ -47,7 +47,8 @@ contract CelebrityToken is ERC721 {
   string public constant SYMBOL = "CelebrityToken"; // solhint-disable-line
 
   uint256 private startingPrice = 0.0001 ether;
-  uint256 private stepLimit = 2 ether;
+  uint256 private firstStepLimit =  0.053613 ether;
+  uint256 private secondStepLimit = 0.564957 ether;
 
   /*** STORAGE ***/
 
@@ -199,12 +200,18 @@ contract CelebrityToken is ERC721 {
     uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
 
     // Update prices
-    if (sellingPrice >= stepLimit) {
-      //adding commission amount //1.2/(1-0.06)
-      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
-    } else {
-      //adding commission amount //2.0/(1-0.06)
+    if( sellingPrice <= firstStepLimit){
+      // first stage
       personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);
+
+    } else if (sellingPrice <= secondStepLimit) {
+      // second stage
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
+
+    } else {
+      // third stage
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 115), 94);
+
     }
 
     _transfer(oldOwner, newOwner, _tokenId);
