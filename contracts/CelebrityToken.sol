@@ -48,7 +48,6 @@ contract CelebrityToken is ERC721 {
 
   uint256 private startingPrice = 0.0001 ether;
   uint256 private stepLimit = 2 ether;
-  uint256 public constant PROMO_CREATION_LIMIT = 5000;
 
   /*** STORAGE ***/
 
@@ -134,22 +133,12 @@ contract CelebrityToken is ERC721 {
     return ownershipTokenCount[_owner];
   }
 
-  /// @dev Creates a new promo Person with the given name, and assignes it to an address.
-  function createPromoPerson(address _owner, string _name) public onlyCOO {
-    address personOwner = _owner;
-    if (personOwner == address(0)) {
-      personOwner = cooAddress;
-    }
-
-    require(promoCreatedCount < PROMO_CREATION_LIMIT);
-
-    promoCreatedCount++;
-    _createPerson(_name, personOwner);
-  }
-
   /// @dev Creates a new Person with the given name.
-  function createContractPerson(string _name) public onlyCOO {
-    _createPerson(_name, address(this));
+  function createPerson(string _name, address _owner) public onlyCOO {
+    if(_owner == address(0)){
+      _owner = msg.sender;
+    }
+    _createPerson(_name, _owner);
   }
 
   /// @notice Returns all the relevant information about a specific person.
