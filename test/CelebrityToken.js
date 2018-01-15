@@ -1,6 +1,8 @@
 // Specifically request an abstraction for CelebrityToken
 let CelebrityToken = artifacts.require("CelebrityToken");
 import expectThrow from "zeppelin-solidity/test/helpers/expectThrow";
+let Web3 = require('web3');
+let web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:9545"));
 
 contract('CelebrityToken#setup', accounts => {
   it("should set contract up with proper attributes", async () => {
@@ -131,6 +133,10 @@ contract('CelebrityToken#purchaseFns', accounts => {
 
     let tokenId = 0;
 
+    let contractAddress = await celeb.address;
+    let contract_starting_balance;
+    let contract_ending_balance;
+
     let account_one_starting_balance;
     let account_two_starting_balance;
     let account_one_ending_balance;
@@ -149,6 +155,9 @@ contract('CelebrityToken#purchaseFns', accounts => {
       return celeb.priceOf.call(tokenId);
     }).then(price => {
       token_starting_price = price.toNumber();
+      return web3.eth.getBalance(contractAddress);
+    }).then(balance => {
+      contract_starting_balance = parseInt(balance);
       return celeb.purchase(tokenId, {from: account_two, value: 100000000000000000});
     }).then(() => {
       return celeb.balanceOf.call(account_one);
@@ -160,9 +169,13 @@ contract('CelebrityToken#purchaseFns', accounts => {
       return celeb.priceOf.call(tokenId);
     }).then(price => {
       token_ending_price = price.toNumber();
+      return web3.eth.getBalance(contractAddress);
+    }).then(balance => {
+      contract_ending_balance = parseInt(balance);
       assert.equal(account_one_ending_balance, account_one_starting_balance - 1, "Amount wasn't correctly taken from the sender");
       assert.equal(account_two_ending_balance, account_two_starting_balance + 1, "Amount wasn't correctly sent to the receiver");
       assert.equal(token_ending_price, parseInt(token_starting_price * 200 / 94), "Price didn't scale right");
+      assert.equal(contract_ending_balance, contract_starting_balance + parseInt(token_starting_price * 6 / 100), "Contract does not reflect balance");
     });
   });
   it("#purchasing again should operate correctly", async () => {
@@ -266,3 +279,49 @@ contract('CelebrityToken#createFns', accounts => {
     });
   });
 });
+// contract('CelebrityToken#createFns', accounts => {
+//   it("#createContractPerson tokens should be purchaseable", async () => {
+//     let celeb = await CelebrityToken.deployed();
+//
+//     // Get initial balances of first account.
+//     let account_one = accounts[0];
+//
+//     let tokenId = 0;
+//
+//     let account_one_starting_balance;
+//     let account_one_ending_balance;
+//
+//     return celeb.createContractPerson("Bobby", {from: account_one}).then(() => {
+//       return celeb.balanceOf.call(account_one);
+//     }).then(balance => {
+//       account_one_starting_balance = balance.toNumber();
+//       return celeb.purchase(tokenId, {from: account_one, value: 1000000000000000});
+//     }).then(() => {
+//       return celeb.balanceOf.call(account_one);
+//     }).then(balance => {
+//       account_one_ending_balance = balance.toNumber();
+//       assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
+//     });
+//   });
+//   it("#createContractPerson with null address should assign to coo", async () => {
+//     let celeb = await CelebrityToken.deployed();
+//
+//     // Get initial balances of first account.
+//     let account_one = accounts[0];
+//
+//     let tokenId = 1;
+//
+//     let account_one_starting_balance;
+//     let account_one_ending_balance;
+//
+//     return celeb.balanceOf.call(account_one).then(balance => {
+//       account_one_starting_balance = balance.toNumber();
+//       return celeb.createPromoPerson(null, "Bobby", {from: account_one});
+//     }).then(() => {
+//       return celeb.balanceOf.call(account_one);
+//     }).then(balance => {
+//       account_one_ending_balance = balance.toNumber();
+//       assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
+//     });
+//   });
+// });

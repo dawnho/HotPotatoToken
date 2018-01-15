@@ -33,6 +33,8 @@ contract CelebrityToken is ERC721 {
   /// @dev The Birth event is fired whenever a new person comes into existence.
   event Birth(uint256 tokenId, string name, address owner);
 
+  event Payment(uint256 payment, uint256 excess, uint256 balance);
+
   /// @dev The TokenSold event is fired whenever a token is sold.
   event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address prevOwner, address winner);
 
@@ -207,8 +209,10 @@ contract CelebrityToken is ERC721 {
     // Making sure sent amount is greater than or equal to the sellingPrice
     require(msg.value >= sellingPrice);
 
-    uint256 payment = SafeMath.div(SafeMath.mul(sellingPrice, 94), 100);
-    uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
+    uint256 payment = uint256(SafeMath.div(SafeMath.mul(sellingPrice, 94), 100));
+    uint256 purchaseExcess = SafeMath.sub(msg.value, sellingPrice);
+
+    Payment(payment, purchaseExcess, msg.value - payment - purchaseExcess);
 
     // Update prices
     if (sellingPrice <= firstStepLimit) {
@@ -366,7 +370,7 @@ contract CelebrityToken is ERC721 {
 
     // This will assign ownership, and also emit the Transfer event as
     // per ERC721 draft
-    _transfer(0, _owner, newPersonId);
+    _transfer(address(0), _owner, newPersonId);
   }
 
   /// Check for token ownership

@@ -17,7 +17,7 @@ contract TestCelebrityToken {
   function testInitialBalanceUsingCreatingPromoPerson() public {
     CelebrityToken celeb = CelebrityToken(DeployedAddresses.CelebrityToken());
 
-    celeb.createPromoPerson(address(0), "Bobby");
+    celeb.createPromoPerson(uint80(0), "Bobby");
 
     uint expected = 1;
 
