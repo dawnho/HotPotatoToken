@@ -136,7 +136,7 @@ contract CelebrityToken is ERC721 {
   }
 
   /// @dev Creates a new promo Person with the given name, and assignes it to an address.
-  function createPromoPerson(address _owner, string _name) public onlyCOO {
+  function createPromoPerson(address _owner, string _name, uint256 _price) public onlyCOO {
     address personOwner = _owner;
     if (personOwner == address(0)) {
       personOwner = cooAddress;
@@ -145,12 +145,12 @@ contract CelebrityToken is ERC721 {
     require(promoCreatedCount < PROMO_CREATION_LIMIT);
 
     promoCreatedCount++;
-    _createPerson(_name, personOwner);
+    _createPerson(_name, personOwner, _price);
   }
 
   /// @dev Creates a new Person with the given name.
-  function createContractPerson(string _name) public onlyCOO {
-    _createPerson(_name, address(this));
+  function createContractPerson(string _name, uint256 _price) public onlyCOO {
+    _createPerson(_name, address(this), _price);
   }
 
   /// @notice Returns all the relevant information about a specific person.
@@ -254,13 +254,6 @@ contract CelebrityToken is ERC721 {
     cooAddress = _newCOO;
   }
 
-  /// @dev Assigns a new startingPrice for new tokens. Only available to the current CEO.
-  /// @param _price The new starting price in wei
-  function setStartingPrice(uint256 _price) public onlyCEO{
-    if(_price > 0.0001 ether)
-      startingPrice = _price;
-  }
-
   /// @dev Required for ERC-721 compliance.
   function symbol() public pure returns (string) {
     return SYMBOL;
@@ -357,7 +350,7 @@ contract CelebrityToken is ERC721 {
   }
 
   /// For creating Person
-  function _createPerson(string _name, address _owner) private {
+  function _createPerson(string _name, address _owner, uint256 _price) private {
     Person memory _person = Person({
       name: _name
     });
@@ -369,7 +362,7 @@ contract CelebrityToken is ERC721 {
 
     Birth(newPersonId, _name, _owner);
 
-    personIndexToPrice[newPersonId] = startingPrice;
+    personIndexToPrice[newPersonId] = _price;
 
     // This will assign ownership, and also emit the Transfer event as
     // per ERC721 draft
