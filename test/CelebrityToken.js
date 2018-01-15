@@ -1,6 +1,6 @@
 // Specifically request an abstraction for CelebrityToken
 let CelebrityToken = artifacts.require("CelebrityToken");
-// import expectThrow from "zeppelin-solidity/test/helpers/expectThrow";
+import expectThrow from "zeppelin-solidity/test/helpers/expectThrow";
 
 contract('CelebrityToken#setup', accounts => {
   it("should set contract up with proper attributes", async () => {
@@ -179,11 +179,17 @@ contract('CelebrityToken#purchaseFns', accounts => {
     let account_one_ending_balance;
     let account_two_ending_balance;
 
+    let token_starting_price;
+    let token_ending_price;
+
     return celeb.balanceOf.call(account_one).then(balance => {
       account_one_starting_balance = balance.toNumber();
       return celeb.balanceOf.call(account_two);
     }).then(balance => {
       account_two_starting_balance = balance.toNumber();
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_starting_price = price.toNumber();
       return celeb.purchase(tokenId, {from: account_one, value: 100000000000000000});
     }).then(() => {
       return celeb.balanceOf.call(account_one);
@@ -192,39 +198,71 @@ contract('CelebrityToken#purchaseFns', accounts => {
       return celeb.balanceOf.call(account_two);
     }).then(balance => {
       account_two_ending_balance = balance.toNumber();
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_ending_price = price.toNumber();
       assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
       assert.equal(account_two_ending_balance, account_two_starting_balance - 1, "Amount wasn't correctly sent to the receiver");
+      assert.equal(token_ending_price, parseInt(token_starting_price * 200 / 94), "Price didn't scale right");
     });
   });
-  it("#purchasing again should operate correctly", async () => {
+  it("#purchasing again with too low price should not work", async () => {
     let celeb = await CelebrityToken.deployed();
 
     // Get initial balances of first and second account.
     let account_one = accounts[0];
     let account_two = accounts[1];
 
+    let tokenId = 1;
+
+    return celeb.createPromoPerson(accounts[0], "Kid", {from: account_one}).then(() => {
+      return expectThrow(celeb.purchase(tokenId, {from: account_two, value: 1}));
+    })
+  });
+});
+contract('CelebrityToken#createFns', accounts => {
+  it("#createContractPerson tokens should be purchaseable", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first account.
+    let account_one = accounts[0];
+
     let tokenId = 0;
 
     let account_one_starting_balance;
-    let account_two_starting_balance;
     let account_one_ending_balance;
-    let account_two_ending_balance;
 
-    return celeb.balanceOf.call(account_one).then(balance => {
-      account_one_starting_balance = balance.toNumber();
-      return celeb.balanceOf.call(account_two);
+    return celeb.createContractPerson("Bobby", {from: account_one}).then(() => {
+      return celeb.balanceOf.call(account_one);
     }).then(balance => {
-      account_two_starting_balance = balance.toNumber();
-      return celeb.purchase(tokenId, {from: account_two, value: 0});
+      account_one_starting_balance = balance.toNumber();
+      return celeb.purchase(tokenId, {from: account_one, value: 1000000000000000});
     }).then(() => {
       return celeb.balanceOf.call(account_one);
     }).then(balance => {
       account_one_ending_balance = balance.toNumber();
-      return celeb.balanceOf.call(account_two);
+      assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
+    });
+  });
+  it("#createContractPerson with null address should assign to coo", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first account.
+    let account_one = accounts[0];
+
+    let tokenId = 1;
+
+    let account_one_starting_balance;
+    let account_one_ending_balance;
+
+    return celeb.balanceOf.call(account_one).then(balance => {
+      account_one_starting_balance = balance.toNumber();
+      return celeb.createPromoPerson(null, "Bobby", {from: account_one});
+    }).then(() => {
+      return celeb.balanceOf.call(account_one);
     }).then(balance => {
-      account_two_ending_balance = balance.toNumber();
-      assert.equal(account_one_ending_balance, account_one_starting_balance - 1, "Amount wasn't correctly taken from the sender");
-      assert.equal(account_two_ending_balance, account_two_starting_balance + 1, "Amount wasn't correctly sent to the receiver");
+      account_one_ending_balance = balance.toNumber();
+      assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
     });
   });
 });

@@ -48,7 +48,7 @@ contract CelebrityToken is ERC721 {
 
   uint256 private startingPrice = 0.0001 ether;
   uint256 private stepLimit = 2 ether;
-  uint256 public constant PROMO_CREATION_LIMIT = 5000;
+  uint256 private constant PROMO_CREATION_LIMIT = 5000;
 
   /*** STORAGE ***/
 
@@ -221,7 +221,9 @@ contract CelebrityToken is ERC721 {
     _transfer(oldOwner, newOwner, _tokenId);
 
     // Pay previous tokenOwner
-    oldOwner.transfer(payment); //(1-0.06)
+    if (oldOwner != address(this)) {
+      oldOwner.transfer(payment); //(1-0.06)
+    }
 
     TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], msg.sender);
 
