@@ -33,8 +33,6 @@ contract CelebrityToken is ERC721 {
   /// @dev The Birth event is fired whenever a new person comes into existence.
   event Birth(uint256 tokenId, string name, address owner);
 
-  event Payment(uint256 payment, uint256 excess, uint256 balance);
-
   /// @dev The TokenSold event is fired whenever a token is sold.
   event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address prevOwner, address winner);
 
@@ -151,8 +149,8 @@ contract CelebrityToken is ERC721 {
   }
 
   /// @dev Creates a new Person with the given name.
-  function createContractPerson(string _name, uint256 _price) public onlyCOO {
-    _createPerson(_name, address(this), _price);
+  function createContractPerson(string _name) public onlyCOO {
+    _createPerson(_name, address(this), startingPrice);
   }
 
   /// @notice Returns all the relevant information about a specific person.
@@ -211,8 +209,6 @@ contract CelebrityToken is ERC721 {
 
     uint256 payment = uint256(SafeMath.div(SafeMath.mul(sellingPrice, 94), 100));
     uint256 purchaseExcess = SafeMath.sub(msg.value, sellingPrice);
-
-    Payment(payment, purchaseExcess, msg.value - payment - purchaseExcess);
 
     // Update prices
     if (sellingPrice <= firstStepLimit) {

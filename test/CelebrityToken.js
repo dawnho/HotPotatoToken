@@ -33,7 +33,7 @@ contract('CelebrityToken#transferFns', accounts => {
     let account_one_ending_balance;
     let account_two_ending_balance;
 
-    return celeb.createPromoPerson(accounts[0], "Bob", {from: account_one}).then(() => {
+    return celeb.createPromoPerson(accounts[0], "Bob", 100000000000000, {from: account_one}).then(() => {
       return celeb.balanceOf.call(account_one);
     }).then(balance => {
       account_one_starting_balance = balance.toNumber();
@@ -145,7 +145,7 @@ contract('CelebrityToken#purchaseFns', accounts => {
     let token_starting_price;
     let token_ending_price;
 
-    return celeb.createPromoPerson(accounts[0], "Bob", {from: account_one}).then(() => {
+    return celeb.createPromoPerson(accounts[0], "Bob", 100000000000000, {from: account_one}).then(() => {
       return celeb.balanceOf.call(account_one);
     }).then(balance => {
       account_one_starting_balance = balance.toNumber();
@@ -228,7 +228,7 @@ contract('CelebrityToken#purchaseFns', accounts => {
 
     let tokenId = 1;
 
-    return celeb.createPromoPerson(accounts[0], "Kid", {from: account_one}).then(() => {
+    return celeb.createPromoPerson(accounts[0], "Kid", 100000000000000, {from: account_one}).then(() => {
       return expectThrow(celeb.purchase(tokenId, {from: account_two, value: 1}));
     })
   });
@@ -270,7 +270,7 @@ contract('CelebrityToken#createFns', accounts => {
 
     return celeb.balanceOf.call(account_one).then(balance => {
       account_one_starting_balance = balance.toNumber();
-      return celeb.createPromoPerson(null, "Bobby", {from: account_one});
+      return celeb.createPromoPerson(null, "Bobby", 100000000000000, {from: account_one});
     }).then(() => {
       return celeb.balanceOf.call(account_one);
     }).then(balance => {
@@ -296,8 +296,8 @@ contract('CelebrityToken#tokensOfOwner', accounts => {
     // Get initial balances of first account.
     let account_one = accounts[0];
 
-    return celeb.createPromoPerson(accounts[0], "Kid", {from: account_one}).then(() => {
-      return celeb.createPromoPerson(accounts[0], "Dult", {from: account_one});
+    return celeb.createPromoPerson(accounts[0], "Kid", 100000000000000, {from: account_one}).then(() => {
+      return celeb.createPromoPerson(accounts[0], "Dult", 100000000000000, {from: account_one});
     }).then(() => {
         return celeb.tokensOfOwner(account_one, {from: account_one});
     }).then(tokens => {
@@ -323,8 +323,8 @@ contract('CelebrityToken#totalSupply', accounts => {
     // Get initial balances of first account.
     let account_one = accounts[0];
 
-    return celeb.createPromoPerson(accounts[0], "Kid", {from: account_one}).then(() => {
-      return celeb.createPromoPerson(accounts[0], "Dult", {from: account_one});
+    return celeb.createPromoPerson(accounts[0], "Kid", 100000000000000, {from: account_one}).then(() => {
+      return celeb.createPromoPerson(accounts[0], "Dult", 100000000000000, {from: account_one});
     }).then(() => {
         return celeb.totalSupply({from: account_one});
     }).then(supply => {
