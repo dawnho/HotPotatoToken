@@ -34,7 +34,7 @@ contract CelebrityToken is ERC721 {
   event Birth(uint256 tokenId, string name, address owner);
 
   /// @dev The TokenSold event is fired whenever a token is sold.
-  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address winner);
+  event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address prevOwner, address winner);
 
   /// @dev Transfer event as defined in current draft of ERC721. Emitted every time a kitten
   ///  ownership is assigned, including births.
@@ -47,8 +47,9 @@ contract CelebrityToken is ERC721 {
   string public constant SYMBOL = "CelebrityToken"; // solhint-disable-line
 
   uint256 private startingPrice = 0.0001 ether;
-  uint256 private stepLimit = 2 ether;
   uint256 private constant PROMO_CREATION_LIMIT = 5000;
+  uint256 private firstStepLimit =  0.053613 ether;
+  uint256 private secondStepLimit = 0.564957 ether;
 
   /*** STORAGE ***/
 
@@ -134,22 +135,12 @@ contract CelebrityToken is ERC721 {
     return ownershipTokenCount[_owner];
   }
 
-  /// @dev Creates a new promo Person with the given name, and assignes it to an address.
-  function createPromoPerson(address _owner, string _name) public onlyCOO {
-    address personOwner = _owner;
-    if (personOwner == address(0)) {
-      personOwner = cooAddress;
-    }
-
-    require(promoCreatedCount < PROMO_CREATION_LIMIT);
-
-    promoCreatedCount++;
-    _createPerson(_name, personOwner);
-  }
-
   /// @dev Creates a new Person with the given name.
-  function createContractPerson(string _name) public onlyCOO {
-    _createPerson(_name, address(this));
+  function createPerson(string _name, address _owner) public onlyCOO {
+    if(_owner == address(0)){
+      _owner = msg.sender;
+    }
+    _createPerson(_name, _owner);
   }
 
   /// @notice Returns all the relevant information about a specific person.
@@ -210,22 +201,28 @@ contract CelebrityToken is ERC721 {
     uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
 
     // Update prices
-    if (sellingPrice >= stepLimit) {
-      //adding commission amount //1.2/(1-0.06)
-      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
-    } else {
-      //adding commission amount //2.0/(1-0.06)
+    if( sellingPrice <= firstStepLimit){
+      // first stage
       personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);
+
+    } else if (sellingPrice <= secondStepLimit) {
+      // second stage
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
+
+    } else {
+      // third stage
+      personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 115), 94);
+
     }
 
     _transfer(oldOwner, newOwner, _tokenId);
 
-    // Pay previous tokenOwner
+    // Pay previous tokenOwner if owner is not contract
     if (oldOwner != address(this)) {
       oldOwner.transfer(payment); //(1-0.06)
     }
 
-    TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], msg.sender);
+    TokenSold(_tokenId, sellingPrice, personIndexToPrice[_tokenId], oldOwner, newOwner);
 
     msg.sender.transfer(purchaseExcess);
   }
