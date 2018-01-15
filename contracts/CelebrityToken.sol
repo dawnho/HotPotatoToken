@@ -210,8 +210,7 @@ contract CelebrityToken is ERC721 {
     require(msg.value >= sellingPrice);
 
     uint256 payment = uint256(SafeMath.div(SafeMath.mul(sellingPrice, 94), 100));
-    uint256 contractBalance = uint256(SafeMath.div(SafeMath.mul(sellingPrice, 6), 100));
-    uint256 purchaseExcess = SafeMath.sub(SafeMath.sub(msg.value, payment), contractBalance);
+    uint256 purchaseExcess = SafeMath.sub(msg.value, sellingPrice);
 
     Payment(payment, purchaseExcess, msg.value - payment - purchaseExcess);
 
