@@ -211,18 +211,15 @@ contract CelebrityToken is ERC721 {
     uint256 purchaseExcess = SafeMath.sub(msg.value, payment);
 
     // Update prices
-    if( sellingPrice <= firstStepLimit){
+    if (sellingPrice <= firstStepLimit) {
       // first stage
       personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 200), 94);
-
     } else if (sellingPrice <= secondStepLimit) {
       // second stage
       personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 120), 94);
-
     } else {
       // third stage
       personIndexToPrice[_tokenId] = SafeMath.div(SafeMath.mul(sellingPrice, 115), 94);
-
     }
 
     _transfer(oldOwner, newOwner, _tokenId);
