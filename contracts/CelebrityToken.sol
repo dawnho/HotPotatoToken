@@ -259,13 +259,6 @@ contract CelebrityToken is ERC721 {
     cooAddress = _newCOO;
   }
 
-  /// @dev Assigns a new startingPrice for new tokens. Only available to the current CEO.
-  /// @param _price The new starting price in wei
-  function setStartingPrice(uint256 _price) public onlyCEO{
-    if(_price > 0.0001 ether)
-      startingPrice = _price;
-  }
-
   /// @dev Required for ERC-721 compliance.
   function symbol() public pure returns (string) {
     return SYMBOL;
