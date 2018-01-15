@@ -279,49 +279,56 @@ contract('CelebrityToken#createFns', accounts => {
     });
   });
 });
-// contract('CelebrityToken#createFns', accounts => {
-//   it("#createContractPerson tokens should be purchaseable", async () => {
-//     let celeb = await CelebrityToken.deployed();
-//
-//     // Get initial balances of first account.
-//     let account_one = accounts[0];
-//
-//     let tokenId = 0;
-//
-//     let account_one_starting_balance;
-//     let account_one_ending_balance;
-//
-//     return celeb.createContractPerson("Bobby", {from: account_one}).then(() => {
-//       return celeb.balanceOf.call(account_one);
-//     }).then(balance => {
-//       account_one_starting_balance = balance.toNumber();
-//       return celeb.purchase(tokenId, {from: account_one, value: 1000000000000000});
-//     }).then(() => {
-//       return celeb.balanceOf.call(account_one);
-//     }).then(balance => {
-//       account_one_ending_balance = balance.toNumber();
-//       assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
-//     });
-//   });
-//   it("#createContractPerson with null address should assign to coo", async () => {
-//     let celeb = await CelebrityToken.deployed();
-//
-//     // Get initial balances of first account.
-//     let account_one = accounts[0];
-//
-//     let tokenId = 1;
-//
-//     let account_one_starting_balance;
-//     let account_one_ending_balance;
-//
-//     return celeb.balanceOf.call(account_one).then(balance => {
-//       account_one_starting_balance = balance.toNumber();
-//       return celeb.createPromoPerson(null, "Bobby", {from: account_one});
-//     }).then(() => {
-//       return celeb.balanceOf.call(account_one);
-//     }).then(balance => {
-//       account_one_ending_balance = balance.toNumber();
-//       assert.equal(account_one_ending_balance, account_one_starting_balance + 1, "Amount wasn't correctly taken from the sender");
-//     });
-//   });
-// });
+contract('CelebrityToken#tokensOfOwner', accounts => {
+  it("No tokens should return empty array", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first account.
+    let account_one = accounts[0];
+
+    return celeb.tokensOfOwner(account_one, {from: account_one}).then(tokens => {
+      assert.deepEqual(tokens, [], "No tokens should return empty array");
+    });
+  });
+  it("Tokens should return array of ids", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first account.
+    let account_one = accounts[0];
+
+    return celeb.createPromoPerson(accounts[0], "Kid", {from: account_one}).then(() => {
+      return celeb.createPromoPerson(accounts[0], "Dult", {from: account_one});
+    }).then(() => {
+        return celeb.tokensOfOwner(account_one, {from: account_one});
+    }).then(tokens => {
+      assert.deepEqual(tokens.length, 2, "Token array incorrect");
+    });
+  });
+});
+
+contract('CelebrityToken#totalSupply', accounts => {
+  it("No tokens should return 0", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first account.
+    let account_one = accounts[0];
+
+    return celeb.totalSupply({from: account_one}).then(supply => {
+      assert.deepEqual(supply.toNumber(), 0, "No tokens should return 0");
+    });
+  });
+  it("Tokens should return token count", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first account.
+    let account_one = accounts[0];
+
+    return celeb.createPromoPerson(accounts[0], "Kid", {from: account_one}).then(() => {
+      return celeb.createPromoPerson(accounts[0], "Dult", {from: account_one});
+    }).then(() => {
+        return celeb.totalSupply({from: account_one});
+    }).then(supply => {
+      assert.deepEqual(supply.toNumber(), 2, "Token supply no. incorrect");
+    });
+  });
+});
