@@ -137,16 +137,16 @@ contract CelebrityToken is ERC721 {
 
   /// @dev Creates a new promo Person with the given name, with given _price and assignes it to an address.
   function createPromoPerson(address _owner, string _name, uint256 _price) public onlyCOO {
+    require(promoCreatedCount < PROMO_CREATION_LIMIT);
+
     address personOwner = _owner;
     if (personOwner == address(0)) {
       personOwner = cooAddress;
     }
 
-    if(_price <= 0){
-        _price = startingPrice;
+    if (_price <= 0) {
+      _price = startingPrice;
     }
-
-    require(promoCreatedCount < PROMO_CREATION_LIMIT);
 
     promoCreatedCount++;
     _createPerson(_name, personOwner, _price);
