@@ -4,6 +4,7 @@ import expectThrow from "zeppelin-solidity/test/helpers/expectThrow";
 let Web3 = require('web3');
 let web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:9545"));
 
+
 contract('CelebrityToken#setup', accounts => {
   it("should set contract up with proper attributes", async () => {
     let celeb = await CelebrityToken.deployed();
@@ -11,10 +12,12 @@ contract('CelebrityToken#setup', accounts => {
     const symbol = await celeb.symbol.call();
     const totalSupply = await celeb.totalSupply.call();
     const balance = await celeb.balanceOf.call(accounts[0]);
+    const ercStatus = await celeb.implementsERC721.call();
     assert.equal(name, "CryptoCelebrities", "Name was set incorrectly");
     assert.equal(symbol, "CelebrityToken", "Symbol was set incorrectly");
     assert.equal(totalSupply, 0, "Total Supply wasn't 0");
     assert.equal(balance.valueOf(), 0, "0 wasn't in the first account");
+    assert.equal(ercStatus, true, "Not returning true");
   });
 });
 
@@ -230,7 +233,55 @@ contract('CelebrityToken#purchaseFns', accounts => {
 
     return celeb.createPromoPerson(accounts[0], "Kid", 100000000000000, {from: account_one}).then(() => {
       return expectThrow(celeb.purchase(tokenId, {from: account_two, value: 1}));
-    })
+    });
+  });
+  it("#purchase should update price at second price level", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first and second account.
+    let account_one = accounts[0];
+    let account_two = accounts[1];
+
+    let tokenId = 2;
+
+    let token_starting_price;
+    let token_ending_price;
+
+    return celeb.createPromoPerson(accounts[0], "Bobby", 53613000000000001, {from: account_one}).then(() => {
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_starting_price = price.toNumber();
+      return celeb.purchase(tokenId, {from: account_two, value: 53613000000000001});
+    }).then(() => {
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_ending_price = price.toNumber();
+      assert.equal(token_ending_price, token_starting_price * 120 / 94, "Price didn't scale right");
+    });
+  });
+  it("#purchase should update price at third price level", async () => {
+    let celeb = await CelebrityToken.deployed();
+
+    // Get initial balances of first and second account.
+    let account_one = accounts[0];
+    let account_two = accounts[1];
+
+    let tokenId = 3;
+
+    let token_starting_price;
+    let token_ending_price;
+
+    return celeb.createPromoPerson(account_one, "Bobbykins", 564957000000000001, {from: account_one}).then(() => {
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_starting_price = price.toNumber();
+      return celeb.purchase(tokenId, {from: account_two, value: 564957000000000001});
+    }).then(() => {
+      return celeb.priceOf.call(tokenId);
+    }).then(price => {
+      token_ending_price = price.toNumber();
+      assert.equal(token_ending_price, parseInt(token_starting_price * 115 / 94), "Price didn't scale right");
+    });
   });
 });
 contract('CelebrityToken#createFns', accounts => {

@@ -2,7 +2,7 @@
 Contract containing single non-fungible token
 
 ## Development Setup
-1. Install NodeJS (5.0+), npm
+1. Install NodeJS (8.0+), npm
 
 2. Install dependencies
 `$ npm install`

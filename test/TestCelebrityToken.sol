@@ -13,14 +13,4 @@ contract TestCelebrityToken {
 
     Assert.equal(celeb.balanceOf(msg.sender), expected, "Owner should have 0 tokens initially");
   }
-
-  function testInitialBalanceUsingCreatingPromoPerson() public {
-    CelebrityToken celeb = CelebrityToken(DeployedAddresses.CelebrityToken());
-
-    celeb.createPromoPerson(uint80(0), "Bobby", 100000);
-
-    uint expected = 1;
-
-    Assert.equal(celeb.balanceOf(msg.sender), expected, "Owner should have 0 tokens initially");
-  }
 }
