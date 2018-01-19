@@ -36,7 +36,7 @@ contract CelebrityToken is ERC721 {
   /// @dev The TokenSold event is fired whenever a token is sold.
   event TokenSold(uint256 tokenId, uint256 oldPrice, uint256 newPrice, address prevOwner, address winner, string name);
 
-  /// @dev Transfer event as defined in current draft of ERC721. Emitted every time a kitten
+  /// @dev Transfer event as defined in current draft of ERC721. 
   ///  ownership is assigned, including births.
   event Transfer(address from, address to, uint256 tokenId);
 
@@ -46,7 +46,7 @@ contract CelebrityToken is ERC721 {
   string public constant NAME = "CryptoCelebrities"; // solhint-disable-line
   string public constant SYMBOL = "CelebrityToken"; // solhint-disable-line
 
-  uint256 private startingPrice = 0.0001 ether;
+  uint256 private startingPrice = 0.001 ether;
   uint256 private constant PROMO_CREATION_LIMIT = 5000;
   uint256 private firstStepLimit =  0.053613 ether;
   uint256 private secondStepLimit = 0.564957 ether;
@@ -54,7 +54,7 @@ contract CelebrityToken is ERC721 {
   /*** STORAGE ***/
 
   /// @dev A mapping from person IDs to the address that owns them. All persons have
-  ///  some valid owner address, even gen0 persons are created with a non-zero owner.
+  ///  some valid owner address.
   mapping (uint256 => address) public personIndexToOwner;
 
   // @dev A mapping from owner address to count of tokens that address owns.
